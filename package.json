@@ -1,78 +1,24 @@
 {
-	"_args": [
-		[
-			{
-				"raw": "backbone-x",
-				"scope": null,
-				"escapedName": "backbone-x",
-				"name": "backbone-x",
-				"rawSpec": "",
-				"spec": "latest",
-				"type": "tag"
-			},
-			"/Users/phong/Projects"
-		]
-	],
-	"_from": "backbone-x@latest",
-	"_id": "backbone-x@0.1.3",
-	"_inCache": true,
-	"_location": "/backbone-x",
-	"_nodeVersion": "4.6.1",
-	"_npmOperationalInternal": {
-		"host": "packages-12-west.internal.npmjs.com",
-		"tmp": "tmp/backbone-x-0.1.3.tgz_1477777707759_0.4841260719113052"
-	},
-	"_npmUser": {
-		"name": "iphong",
-		"email": "phong.vu@me.com"
-	},
-	"_npmVersion": "2.15.9",
-	"_phantomChildren": {},
-	"_requested": {
-		"raw": "backbone-x",
-		"scope": null,
-		"escapedName": "backbone-x",
-		"name": "backbone-x",
-		"rawSpec": "",
-		"spec": "latest",
-		"type": "tag"
-	},
-	"_requiredBy": [
-		"#USER"
-	],
-	"_resolved": "https://registry.npmjs.org/backbone-x/-/backbone-x-0.1.3.tgz",
-	"_shasum": "48e1abd97f40321f06350237772d9dab938d7d2c",
-	"_shrinkwrap": null,
-	"_spec": "backbone-x",
-	"_where": "/Users/phong/Projects",
+	"name": "backbone-x",
+	"version": "0.1.6",
 	"author": {
 		"name": "Phong Vu"
 	},
-	"dependencies": {},
 	"description": "Backbone.js and much more!",
-	"devDependencies": {
-		"babel-core": "^6.24.1",
-		"babel-loader": "^7.0.0",
-		"backbone": "^1.3.3",
-		"jquery": "^3.1.1",
-		"underscore": "^1.8.3",
-		"webpack": "^2.5.1"
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/iphong/backbone-x.git"
 	},
 	"main": "./model.js",
-	"directories": {},
-	"dist": {
-		"shasum": "48e1abd97f40321f06350237772d9dab938d7d2c",
-		"tarball": "https://registry.npmjs.org/backbone-x/-/backbone-x-0.1.3.tgz"
+	"dependencies": {
+		"jquery": "^3.1.1",
+		"underscore": "^1.8.3",
+		"backbone": "^1.3.3"
 	},
 	"maintainers": [
 		{
 			"name": "iphong",
 			"email": "phong.vu@me.com"
 		}
-	],
-	"name": "backbone-x",
-	"optionalDependencies": {},
-	"readme": "ERROR: No README data found!",
-	"scripts": {},
-	"version": "0.1.3"
+	]
 }
