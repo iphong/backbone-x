@@ -1,1 +1,4 @@
-Backbone.js and much more!
+Backbone.js and much mor
+
+How to install
+
