@@ -1,4 +1,1 @@
-Backbone.js and much mor
-
-How to install
-
+Documentation is in progress...
