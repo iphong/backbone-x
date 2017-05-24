@@ -42,7 +42,7 @@ void function( root, factory ) {
 				results[ currentKey ] = iteratee(obj[ currentKey ], currentKey, obj);
 			}
 			return results;
-		}
+		},
 	});
 
 	_.noop = function() {
@@ -71,7 +71,7 @@ void function( root, factory ) {
 				},
 				set: function( value ) {
 					return value;
-				}
+				},
 			});
 		}
 
@@ -289,7 +289,7 @@ void function( root, factory ) {
 						// Inject in the relational lookup
 						val = this.setRelation(attr, val, options);
 					}
-					if (_.isUndefined(val))
+					if ( _.isUndefined(val) )
 						continue;
 
 					if ( !_.isEqual(current[ attr ], val) ) changes.push(attr);
@@ -355,7 +355,7 @@ void function( root, factory ) {
 			},
 			toJSON: function() {
 				var attr, obj = Object.create(null, {});
-				var attrs = _.extend({}, this.attributes, this.computes)
+				var attrs = _.extend({}, this.attributes, this.computes);
 				for ( var key in attrs ) {
 					attr = this.get(key);
 					if ( attr instanceof BackboneModel || attr instanceof BackboneCollection )
@@ -433,7 +433,7 @@ void function( root, factory ) {
 								!(this.attributes[ attr ] instanceof BackboneCollection) ) {
 							this.attributes[ attr ] = new Model(this.attributes[ attr ], {
 								_parent: this,
-								_relatedKey: attr
+								_relatedKey: attr,
 							});
 						}
 						this.attributes[ attr ].alias(model.attributes[ attr ]);
@@ -451,10 +451,13 @@ void function( root, factory ) {
 				//	})
 				//})
 				return this;
-			}
+			},
 		});
 		// statics
 		_.extend(Model, {
+			Relation: function( key, attr ) {
+				return Collection()
+			},
 			create: function( attrs, protos, statics ) {
 
 				var protos = protos || {};
@@ -480,18 +483,18 @@ void function( root, factory ) {
 						_.extend({}, protos, {
 							defaults: defaults,
 							relations: relations,
-							computes: computes
+							computes: computes,
 						}),
 						_.extend({}, statics, {
 							create: Model.create,
 							extend: Model.extend,
-							define: Model.define
-						})
+							define: Model.define,
+						}),
 				);
 			},
 			extend: function() {
 				return BackboneModel.extend.apply(this, arguments);
-			}
+			},
 		});
 
 		Model.define = Model.create;
@@ -583,6 +586,9 @@ void function( root, factory ) {
 			comparator: function( model ) {
 				return model.get('index');
 			},
+			toJSON() {
+				return _.extend(Object.create(null), _.omit(BackboneCollection.prototype.toJSON.apply(this, arguments)));
+			},
 			toCompactJSON: function() {
 				var models = _(this.models).map(function( model ) {
 					return model instanceof BackboneModel ? model.toCompactJSON() : model.toJSON();
@@ -603,31 +609,34 @@ void function( root, factory ) {
 				if ( !model.validationError ) return model;
 				this.trigger('invalid', this, model.validationError, options);
 				return false;
-			}
+			},
 		});
 		// statics
 		_.extend(Collection, {
+			Relation: function( key, attr ) {
+				return Collection()
+			},
 			create: function( models, protos, statics ) {
 				var statics = _.extend({}, statics, {
 					create: Collection.create,
 					extend: Collection.extend,
-					define: Collection.define
+					define: Collection.define,
 				});
 				if ( _.isArray(models) || isPrototypeOf(models, Model) )
 					return Collection.extend(_.extend({}, protos, {
-						model: _.isArray(models) ? models[ 0 ] : models
+						model: _.isArray(models) ? models[ 0 ] : models,
 					}), statics);
 
 				else if ( _.isObject(models) )
 					return Collection.extend(_.extend({}, protos, {
-						relations: models
+						relations: models,
 					}), statics);
 				else
 					return Collection.extend(protos, statics);
 			},
 			extend: function() {
 				return BackboneCollection.extend.apply(this, arguments);
-			}
+			},
 		});
 
 		Collection.define = Collection.create;

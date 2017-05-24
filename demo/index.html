@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Demo</title>
+</head>
+<body>
+
+
+<div id="app">
+	<h3 data-bind="title">App Name</h3>
+	<input class="task-input">
+	<ol data-bind="collection:tasks">
+		<li>
+			<span data-bind="name">Task Name</span>
+			<ul data-bind="collection:items">
+				<li data-bind="text:name">Item Name</li>
+			</ul>
+		</li>
+	</ol>
+</div>
+
+<script src="../node_modules/jquery/dist/jquery.js"></script>
+<script src="../node_modules/underscore/underscore.js"></script>
+<script src="../node_modules/backbone/backbone.js"></script>
+<script src="../model.js"></script>
+<script src="../view.js"></script>
+
+<script>
+
+	Store = B.Model({
+		title: 'Hello',
+		tasks: B.Collection(),
+	});
+	app = new B.View({
+		el: '#app',
+		model: new Store,
+		events: {
+			'change input': function( e ) {
+				app.model.get('tasks').add({
+					name: e.target.value,
+					items: new B.Collection([
+						{ name: 'item1' },
+						{ name: 'item2' },
+						{ name: 'item3' },
+					]),
+				});
+				e.target.value = '';
+			},
+		},
+		modelEvents: {
+			'change tasks': function() {
+				console.log('event', arguments);
+			},
+		},
+	});
+</script>
+
+<!--<script src="main.js"></script>-->
+<script type="text/javascript">
+
+	var { Model, Collection, Compute } = B;
+
+	var Library = Model({
+		books: Collection(Model({
+			title: 'Untitled',
+			author: Model.Relation('authors'),
+			categories: Collection.Relation('categories'),
+		})),
+		authors: Collection(Model({
+			name: 'Unnamed',
+			books: Collection.Relation('books'),
+		})),
+		categories: Collection(Model({
+			name: 'Uncategoried',
+		})),
+	});
+
+	var AddressBook = B.Model({
+		entries: B.Collection([
+			B.Model({
+				favorite: false,
+				name: B.Model({
+					first: '',
+					last: '',
+					full: B.Compute([ 'first', 'last' ], function( first, last ) {
+						return first + ' ' + last;
+					}),
+					username: B.Compute([ 'full' ], function( fullname ) {
+						return fullname.toLowerCase().replace(/\s+/g, '_');
+					}),
+				}),
+				phones: B.Collection(B.Model({
+					type: 'home',
+					number: B.Compute({
+						get: function( value ) {
+							return value;
+						},
+						set: function( value ) {
+							return (value);
+						},
+					}),
+				})),
+				addresses: B.Collection([
+					B.Model({
+						address: '',
+						city: '',
+						state: 'CA',
+						zipcode: 'CA',
+						country: 'USA',
+					}),
+				]),
+				notes: B.Collection(B.Model({
+					time: B.Compute({
+						init: function() {
+							return _.now();
+						},
+					}),
+					memo: '',
+				})),
+			}),
+		]),
+	});
+
+	var a = new Library;
+
+	a.on('all', function( type ) {
+		console.log(type);
+	});
+
+	a.get('categories')
+		.add({ id: 1, name: 'Category 1' })
+		.add({ id: 2, name: 'Category 2' })
+		.add({ id: 3, name: 'Category 3' });
+	a.get('authors')
+		.add({ name: 'Author 1'})
+		.then(author => {
+	        author.get('books')
+	            .add({ title: 'Book 1'})
+		        .then(book => {
+		        	book.get('categories').add(1)
+                })
+		});
+</script>
+</body>
+</html>
