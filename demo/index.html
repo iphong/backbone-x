@@ -121,26 +121,26 @@
 			}),
 		]),
 	});
-
-	var a = new Library;
-
-	a.on('all', function( type ) {
-		console.log(type);
-	});
-
-	a.get('categories')
-		.add({ id: 1, name: 'Category 1' })
-		.add({ id: 2, name: 'Category 2' })
-		.add({ id: 3, name: 'Category 3' });
-	a.get('authors')
-		.add({ name: 'Author 1'})
-		.then(author => {
-	        author.get('books')
-	            .add({ title: 'Book 1'})
-		        .then(book => {
-		        	book.get('categories').add(1)
-                })
-		});
+//
+//	var a = new Library;
+//
+//	a.on('all', function( type ) {
+//		console.log(type);
+//	});
+//
+//	a.get('categories')
+//		.add({ id: 1, name: 'Category 1' })
+//		.add({ id: 2, name: 'Category 2' })
+//		.add({ id: 3, name: 'Category 3' });
+//	a.get('authors')
+//		.add({ name: 'Author 1'})
+//		.then(author => {
+//	        author.get('books')
+//	            .add({ title: 'Book 1'})
+//		        .then(book => {
+//		        	book.get('categories').add(1)
+//                })
+//		});
 </script>
 </body>
 </html>

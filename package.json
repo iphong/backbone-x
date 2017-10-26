@@ -1,24 +1,39 @@
 {
-	"name": "backbone-x",
-	"version": "0.1.7",
-	"author": {
-		"name": "Phong Vu"
-	},
-	"description": "Backbone.js and much more!",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/iphong/backbone-x.git"
-	},
-	"main": "./model.js",
-	"dependencies": {
-		"jquery": "^3.1.1",
-		"underscore": "^1.8.3",
-		"backbone": "^1.3.3"
-	},
-	"maintainers": [
-		{
-			"name": "iphong",
-			"email": "phong.vu@me.com"
-		}
-	]
+  "name": "backbone-x",
+  "version": "1.0.8",
+  "license": "MIT",
+  "author": {
+    "name": "Phong Vu"
+  },
+  "description": "Backbone.js and much more!",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iphong/backbone-x.git"
+  },
+  "main": "./model.js",
+  "scripts": {
+    "start": "webpack"
+  },
+  "dependencies": {
+    "backbone": "latest",
+    "jquery": "latest",
+    "lodash": "latest",
+    "underscore": "latest"
+  },
+  "maintainers": [
+    {
+      "name": "iphong",
+      "email": "phong.vu@me.com"
+    }
+  ],
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "react-css-modules": "^4.7.1",
+    "transform-runtime": "^0.0.0",
+    "parse": "^1.10.0"
+  }
 }
