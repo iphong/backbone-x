@@ -368,7 +368,7 @@ void (function(root, factory) {
 					) {
 						return value
 					}
-					if (typeof value === 'object') {
+					if (value && typeof value === 'object') {
 						const proto = Object.getPrototypeOf(value)
 						if (
 							proto === Array.prototype ||
