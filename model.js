@@ -25,9 +25,11 @@ void (function(root, factory) {
 		root.B = factory(root, root.B || {}, root._, root.Backbone)
 	}
 })(this, function(root, B, _, Backbone) {
-	let Model, Collection, Compute
+	const chrome = root.chrome
+	let Model, Collection, Compute, localStorage
 	const BackboneModel = Backbone.Model
 	const BackboneCollection = Backbone.Collection
+	localStorage = root.localStorage
 
 	/* --- Compute --- */
 	Compute = B.Compute = (function() {
@@ -55,7 +57,6 @@ void (function(root, factory) {
 
 		return Compute
 	})()
-
 	/* --- Model --- */
 	Model = B.Model = (function() {
 		function Model(attrs = {}, options = {}) {
@@ -69,7 +70,10 @@ void (function(root, factory) {
 			_.extend(this, _.pick(options, '_parent', '_relatedKey'))
 			_.each(this.computes, this._registerComputeValue, this)
 			BackboneModel.apply(this, arguments)
-			if (global.localStorage && localStorageKey) {
+			if (
+				!_.isUndefined(localStorage) &&
+				!_.isUndefined(localStorageKey)
+			) {
 				const storedData = global.localStorage.getItem(localStorageKey)
 				if (storedData) {
 					try {
@@ -115,6 +119,19 @@ void (function(root, factory) {
 				return root
 			},
 
+			subscribe(events, handler, context) {
+				if (typeof events !== 'string') return
+				if (typeof handler !== 'function') return
+				const keys = events.split(/\s/)
+				this.on('change', () => {
+					const changes = Object.keys(this.changed)
+					const matched = _.intersection(keys, changes).length
+					if (matched) {
+						handler.call(context)
+					}
+				})
+			},
+
 			get: function(key) {
 				let value = this
 				const regex = /(\w+)(?:#(\w+))?/g
@@ -124,8 +141,8 @@ void (function(root, factory) {
 						value instanceof BackboneModel
 							? getComputedValue(value, match[1])
 							: typeof value === 'object'
-								? value[match[1]]
-								: undefined
+							? value[match[1]]
+							: undefined
 					if (match[2])
 						value =
 							value instanceof BackboneCollection
@@ -400,8 +417,7 @@ void (function(root, factory) {
 				return obj
 			},
 			toCompactJSON: function() {
-				let attr,
-					obj = Object.create()
+				let attr, obj = {}
 				for (const key in this.attributes) {
 					if (this.attributes.hasOwnProperty(key)) {
 						attr = this.attributes[key]
@@ -433,7 +449,7 @@ void (function(root, factory) {
 					// Trigger "change:this.attr"
 					parent.changed[`${this._relatedKey}.${key}`] = this.changed[
 						key
-					]
+						]
 					parent.trigger(
 						`change:${this._relatedKey}.${key}`,
 						parent,
@@ -600,9 +616,7 @@ void (function(root, factory) {
 				return Collection.create.apply(Collection, arguments)
 			}
 			_.extend(this, _.pick(options, '_parent', '_relatedKey'))
-			// this.on('change', this._triggerParentChange);
-			// this.on('add', this._triggerParentChange);
-			// this.on('remove', this._triggerParentChange);
+			this.on('update sort reset', this._triggerParentChange)
 			BackboneCollection.apply(this, arguments)
 		}
 
@@ -610,7 +624,19 @@ void (function(root, factory) {
 
 		// prototypes
 		_.extend(Collection.prototype, {
+
 			model: Model,
+
+			subscribe(events, handler, context) {
+				if (typeof events !== 'string') return
+				if (typeof handler !== 'function') return
+				const keys = events.split(/\s/)
+				this.on('all', event => {
+					if (keys.includes(event)) {
+						handler.call(context)
+					}
+				})
+			},
 
 			_triggerParentChange: function(model, options) {
 				const parent = this._parent
@@ -630,7 +656,7 @@ void (function(root, factory) {
 							// Trigger "change:collection.id.child"
 							parent.changed[
 								`${this._relatedKey}#${modelID}.${key}`
-							] =
+								] =
 								model.changed[key]
 							parent.trigger(
 								`change:${this._relatedKey}#${modelID}.${key}`,
@@ -671,6 +697,8 @@ void (function(root, factory) {
 					parent._triggerParentChange(options)
 				}
 
+				parent.changed[this._relatedKey] = this
+
 				// Finally trigger "change"
 				parent.trigger('change', parent, options)
 			},
@@ -708,6 +736,9 @@ void (function(root, factory) {
 				})
 				models.__proto__ = null
 				return models
+			},
+			removeAt(index) {
+				this.remove(this.at(index))
 			},
 			_prepareModel: function(attrs, options) {
 				if (attrs instanceof Model) return attrs
