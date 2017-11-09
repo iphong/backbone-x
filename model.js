@@ -4,7 +4,7 @@
 void (function(root, factory) {
 	// Set up Backbone appropriately for the environment. Start with AMD.
 	if (typeof define === 'function' && define.amd) {
-		define(['underscore', 'backbone', 'exports'], function(
+		define(['lodash', 'backbone', 'exports'], function(
 			_,
 			Backbone,
 			exports
@@ -16,7 +16,7 @@ void (function(root, factory) {
 
 		// Next for Node.js or CommonJS.
 	} else if (typeof exports !== 'undefined') {
-		const _ = require('underscore')
+		const _ = require('lodash')
 		const Backbone = require('backbone')
 		factory(root, exports, _, Backbone)
 
@@ -29,7 +29,7 @@ void (function(root, factory) {
 	let Model, Collection, Compute, localStorage
 	const BackboneModel = Backbone.Model
 	const BackboneCollection = Backbone.Collection
-	localStorage = root.localStorage
+	localStorage = global.localStorage
 
 	/* --- Compute --- */
 	Compute = B.Compute = (function() {
@@ -74,7 +74,7 @@ void (function(root, factory) {
 				!_.isUndefined(localStorage) &&
 				!_.isUndefined(localStorageKey)
 			) {
-				const storedData = global.localStorage.getItem(localStorageKey)
+				const storedData = localStorage.getItem(localStorageKey)
 				if (storedData) {
 					try {
 						this.set(JSON.parse(storedData))
@@ -87,9 +87,9 @@ void (function(root, factory) {
 					}
 				}
 				this.on(
-					'change',
+					'all',
 					_.debounce(() => {
-						global.localStorage.setItem(
+						localStorage.setItem(
 							localStorageKey,
 							JSON.stringify(this.toLocalStorageJSON())
 						)
@@ -246,24 +246,7 @@ void (function(root, factory) {
 					return this._set(key, options)
 				}
 				if (typeof key === 'string') {
-					if (!key.match(/[.\[]/)) return this._set(key, val, options)
-					const regex = /(\w+)(?:\[([0-9]+)\])?/
-					const keys = key.split('.')
-					const setAttr = keys.pop().match(regex)
-					const getAttr = keys.join('.')
-					if (!setAttr[2]) {
-						var setter = this.get(getAttr)
-						if (setter instanceof BackboneModel)
-							setter.set(setAttr[1], val, options)
-						else if (typeof setter === 'object')
-							setter[setAttr[1]] = val
-						return this
-					}
-					const collection = this.get(`${getAttr}.${setAttr[1]}`)
-					if (collection instanceof BackboneCollection)
-						collection.at(parseInt(setAttr[2])).set(val, options)
-					else if (typeof setter === 'object')
-						collection[parseInt(setAttr[2])] = val
+					return this._set(_.set({}, key, val), options)
 				}
 				return this
 			},
@@ -311,8 +294,8 @@ void (function(root, factory) {
 					}
 					if (_.isUndefined(val)) continue
 
-					if (!_.isEqual(current[attr], val)) changes.push(attr)
-					if (!_.isEqual(prev[attr], val)) {
+					if (current[attr] !== val) changes.push(attr)
+					if (prev[attr] !== val) {
 						this.changed[attr] = val
 					} else {
 						delete this.changed[attr]
