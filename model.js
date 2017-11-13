@@ -360,7 +360,7 @@ void (function(root, factory) {
 				return attrs
 			},
 			toLocalStorageJSON() {
-				return _.mapObject(this.attributes, value => {
+				return _.mapValues(this.attributes, value => {
 					if (
 						typeof value === 'string' ||
 						typeof value === 'number' ||
