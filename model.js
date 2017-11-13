@@ -246,7 +246,25 @@ void (function(root, factory) {
 					return this._set(key, options)
 				}
 				if (typeof key === 'string') {
-					return this._set(_.set({}, key, val), options)
+					if (!key.match(/[.\[]/)) return this._set(key, val, options)
+					const regex = /(\w+)(?:\[([0-9]+)\])?/
+					const keys = key.split('.')
+					const setAttr = keys.pop().match(regex)
+					const getAttr = keys.join('.')
+					if (!setAttr[2]) {
+						var setter = this.get(getAttr)
+						if (setter instanceof BackboneModel)
+							setter.set(setAttr[1], val, options)
+						else if (typeof setter === 'object')
+							setter[setAttr[1]] = val
+						return this
+					}
+					const collection = this.get(`${getAttr}.${setAttr[1]}`)
+					if (collection instanceof BackboneCollection)
+						collection.at(parseInt(setAttr[2])).set(val, options)
+					else if (typeof setter === 'object')
+						collection[parseInt(setAttr[2])] = val
+					this.trigger('change:' + setAttr, this, options)
 				}
 				return this
 			},
@@ -360,7 +378,7 @@ void (function(root, factory) {
 				return attrs
 			},
 			toLocalStorageJSON() {
-				return _.mapObject(this.attributes, value => {
+				return _.mapValues(this.attributes, value => {
 					if (
 						typeof value === 'string' ||
 						typeof value === 'number' ||

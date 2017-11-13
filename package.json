@@ -1,42 +1,42 @@
 {
-  "name": "backbone-x",
-  "version": "1.0.21",
-  "license": "MIT",
-  "author": {
-    "name": "Phong Vu"
-  },
-  "description": "Backbone.js and much more!",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/iphong/backbone-x.git"
-  },
-  "main": "./model.js",
-  "scripts": {
-    "start": "webpack"
-  },
-  "dependencies": {
-    "backbone": "latest",
-    "jquery": "latest",
-    "lodash": "latest",
-    "underscore": "latest"
-  },
-  "maintainers": [
-    {
-      "name": "iphong",
-      "email": "phong.vu@me.com"
-    }
-  ],
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-loader": "^7.1.2",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-preset-flow": "^6.23.0",
-    "babel-preset-react": "^6.24.1",
-    "babel-preset-stage-0": "^6.24.1",
-    "eslint-plugin-flowtype": "^2.39.1",
-    "flow-bin": "^0.57.3",
-    "parse": "^1.10.0",
-    "react-css-modules": "^4.7.1",
-    "transform-runtime": "^0.0.0"
-  }
+	"name": "backbone-x",
+	"version": "1.0.21",
+	"license": "MIT",
+	"author": {
+		"name": "Phong Vu"
+	},
+	"description": "Backbone.js and much more!",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/iphong/backbone-x.git"
+	},
+	"main": "./model.js",
+	"module": "./dist/index.js",
+	"scripts": {
+		"start": "webpack"
+	},
+	"dependencies": {
+		"lodash": "latest",
+		"underscore": "latest"
+	},
+	"maintainers": [
+		{
+			"name": "iphong",
+			"email": "phong.vu@me.com"
+		}
+	],
+	"devDependencies": {
+		"babel-cli": "^6.26.0",
+		"babel-eslint": "^8.0.1",
+		"babel-loader": "^7.1.2",
+		"babel-preset-es2015": "^6.24.1",
+		"babel-preset-react": "^6.24.1",
+		"babel-preset-stage-0": "^6.24.1",
+		"enzyme": "^3.1.0",
+		"enzyme-adapter-react-16": "^1.0.2",
+		"enzyme-to-json": "^3.1.4",
+		"jest": "^21.2.1",
+		"jest-webpack-resolver": "^0.1.2",
+		"webpack": "^3.7.1"
+	}
 }

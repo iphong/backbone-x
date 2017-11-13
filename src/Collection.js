@@ -2,15 +2,15 @@ import _ from 'underscore'
 import Model from './Model'
 import Events from './Events'
 import sync from '../lib/sync'
+import extend from '../lib/extend'
 import addUnderscoreMethods from '../lib/addUnderscoreMethods'
 
 const slice = Array.prototype.slice
 
-export default class Collection extends Events {
+class Collection {
 	static setOptions = { add: true, remove: true, merge: true }
 	static addOptions = { add: true, remove: false }
 	constructor(models, options) {
-		super()
 		options || (options = {})
 		if (options.model) this.model = options.model
 		if (options.comparator !== void 0) this.comparator = options.comparator
@@ -423,6 +423,10 @@ export default class Collection extends Events {
 		this.trigger.apply(this, arguments)
 	}
 }
+
+Collection.extend = extend
+
+export default Events(Collection)
 
 addUnderscoreMethods(
 	Collection,

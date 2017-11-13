@@ -5,14 +5,20 @@
  * -- ported by Phong Vu
  */
 import _defaults from 'lodash/defaultsDeep'
+import _isFunction from 'lodash/isFunction'
+import _isObject from 'lodash/isObject'
+import _isString from 'lodash/isString'
+import _matches from 'lodash/matches'
+import _extend from 'lodash/extend'
 import Events from './Events'
 import sync from '../lib/sync'
+import extend from '../lib/extend'
 import addUnderscoreMethods from '../lib/addUnderscoreMethods'
-const _ = require('underscore')
 
-export default class Model extends Events {
+import _ from 'underscore'
+
+class Model {
 	constructor(...args) {
-		super()
 		let [attrs, options] = args
 		attrs = { ...attrs }
 		options = { ...options }
@@ -78,7 +84,7 @@ export default class Model extends Events {
 	// Returns `true` if the attribute contains a value that is not null
 	// or undefined.
 	has(attr) {
-		return this.get(attr) != null
+		return this.get(attr) !== null
 	}
 
 	// Special-cased proxy to underscore's `_.matches` method.
@@ -90,7 +96,7 @@ export default class Model extends Events {
 	// the core primitive operation of a model, updating the data and notifying
 	// anyone who needs to know about the change in state. The heart of the beast.
 	set(key, val, options) {
-		if (key == null) return this
+		if (key === null) return this
 		// Handle both `"key", value` and `{key: value}` -style arguments.
 		let attrs
 		if (typeof key === 'object') {
@@ -118,8 +124,8 @@ export default class Model extends Events {
 		// For each `set` attribute, update or delete the current value.
 		for (const attr in attrs) {
 			val = attrs[attr]
-			if (!_.isEqual(current[attr], val)) changes.push(attr)
-			if (!_.isEqual(prev[attr], val)) {
+			if (current[attr] !== val) changes.push(attr)
+			if (prev[attr] !== val) {
 				changed[attr] = val
 			} else {
 				delete changed[attr]
@@ -158,20 +164,24 @@ export default class Model extends Events {
 	// Remove an attribute from the model, firing `"change"`. `unset` is a noop
 	// if the attribute doesn't exist.
 	unset(attr, options) {
-		return this.set(attr, void 0, _.extend({}, options, { unset: true }))
+		return this.set(
+			attr,
+			void 0,
+			_extend({}, options, { unset: true })
+		)
 	}
 
 	// Clear all attributes on the model, firing `"change"`.
 	clear(options) {
 		const attrs = {}
 		for (const key in this.attributes) attrs[key] = void 0
-		return this.set(attrs, _.extend({}, options, { unset: true }))
+		return this.set(attrs, _extend({}, options, { unset: true }))
 	}
 
 	// Determine if the model has changed since the last `"change"` event.
 	// If you specify an attribute name, determine if that attribute has changed.
 	hasChanged(attr) {
-		if (attr == null) return !_.isEmpty(this.changed)
+		if (attr === null) return !_.isEmpty(this.changed)
 		return _.has(this.changed, attr)
 	}
 
@@ -183,11 +193,13 @@ export default class Model extends Events {
 	// determining if there *would be* a change.
 	changedAttributes(diff) {
 		if (!diff) return this.hasChanged() ? _.clone(this.changed) : false
-		const old = this._changing ? this._previousAttributes : this.attributes
+		const old = this._changing
+			? this._previousAttributes
+			: this.attributes
 		const changed = {}
 		for (const attr in diff) {
 			const val = diff[attr]
-			if (_.isEqual(old[attr], val)) continue
+			if (old[attr] === val) continue
 			changed[attr] = val
 		}
 		return _.size(changed) ? changed : false
@@ -196,7 +208,7 @@ export default class Model extends Events {
 	// Get the previous value of an attribute, recorded at the time the last
 	// `"change"` event was fired.
 	previous(attr) {
-		if (attr == null || !this._previousAttributes) return null
+		if (attr === null || !this._previousAttributes) return null
 		return this._previousAttributes[attr]
 	}
 
@@ -209,7 +221,7 @@ export default class Model extends Events {
 	// Fetch the model from the server, merging the response with the model's
 	// local attributes. Any changed attributes will trigger a "change" event.
 	fetch(options) {
-		options = _.extend({ parse: true }, options)
+		options = _extend({ parse: true }, options)
 		const model = this
 		const success = options.success
 		options.success = function(resp) {
@@ -230,13 +242,13 @@ export default class Model extends Events {
 	save(key, val, options) {
 		// Handle both `"key", value` and `{key: value}` -style arguments.
 		let attrs
-		if (key == null || typeof key === 'object') {
+		if (key === null || typeof key === 'object') {
 			attrs = key
 			options = val
 		} else {
 			;(attrs = {})[key] = val
 		}
-		options = _.extend({ validate: true, parse: true }, options)
+		options = _extend({ validate: true, parse: true }, options)
 		const wait = options.wait
 		// If we're not waiting and attributes exist, save acts as
 		// `set(attr).save(null, opts)` with validation. Otherwise, check if
@@ -254,15 +266,18 @@ export default class Model extends Events {
 		options.success = function(resp) {
 			// Ensure attributes are restored during synchronous saves.
 			model.attributes = attributes
-			let serverAttrs = options.parse ? model.parse(resp, options) : resp
-			if (wait) serverAttrs = _.extend({}, attrs, serverAttrs)
-			if (serverAttrs && !model.set(serverAttrs, options)) return false
+			let serverAttrs = options.parse
+				? model.parse(resp, options)
+				: resp
+			if (wait) serverAttrs = _extend({}, attrs, serverAttrs)
+			if (serverAttrs && !model.set(serverAttrs, options))
+				return false
 			if (success) success.call(options.context, model, resp, options)
 			model.trigger('sync', model, resp, options)
 		}
 		wrapError(this, options)
 		// Set temporary attributes if `{wait: true}` to properly find new ids.
-		if (attrs && wait) this.attributes = _.extend({}, attributes, attrs)
+		if (attrs && wait) this.attributes = _extend({}, attributes, attrs)
 		const method = this.isNew()
 			? 'create'
 			: options.patch ? 'patch' : 'update'
@@ -311,7 +326,7 @@ export default class Model extends Events {
 			urlError()
 		if (this.isNew()) return base
 		const id = this.get(this.idAttribute)
-		return base.replace(/[^\/]$/, '$&/') + encodeURIComponent(id)
+		return base.replace(/[^/]$/, '$&/') + encodeURIComponent(id)
 	}
 
 	// **parse** converts a response into the hash of attributes to be `set` on
@@ -332,14 +347,14 @@ export default class Model extends Events {
 
 	// Check if the model is currently in a valid state.
 	isValid(options) {
-		return this._validate({}, _.extend({}, options, { validate: true }))
+		return this._validate({}, _extend({}, options, { validate: true }))
 	}
 
 	// Run validation against the next complete set of model attributes,
 	// returning `true` if all is well. Otherwise, fire an `"invalid"` event.
 	_validate(attrs, options) {
 		if (!options.validate || !this.validate) return true
-		attrs = _.extend({}, this.attributes, attrs)
+		attrs = _extend({}, this.attributes, attrs)
 		const error = (this.validationError =
 			this.validate(attrs, options) || null)
 		if (!error) return true
@@ -347,11 +362,15 @@ export default class Model extends Events {
 			'invalid',
 			this,
 			error,
-			_.extend(options, { validationError: error })
+			_extend(options, { validationError: error })
 		)
 		return false
 	}
 }
+
+Model.extend = extend
+
+export default Events(Model)
 
 addUnderscoreMethods(
 	Model,
@@ -370,10 +389,10 @@ addUnderscoreMethods(
 
 // Support `collection.sortBy('attr')` and `collection.findWhere({id: 1})`.
 export function cb(iteratee, instance) {
-	if (_.isFunction(iteratee)) return iteratee
-	if (_.isObject(iteratee) && !instance._isModel(iteratee))
+	if (_isFunction(iteratee)) return iteratee
+	if (_isObject(iteratee) && !instance._isModel(iteratee))
 		return modelMatcher(iteratee)
-	if (_.isString(iteratee))
+	if (_isString(iteratee))
 		return function(model) {
 			return model.get(iteratee)
 		}
@@ -381,7 +400,7 @@ export function cb(iteratee, instance) {
 }
 
 export function modelMatcher(attrs) {
-	const matcher = _.matches(attrs)
+	const matcher = _matches(attrs)
 	return function(model) {
 		return matcher(model.attributes)
 	}
