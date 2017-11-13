@@ -337,7 +337,7 @@ void function (root, factory) {
 				return attrs;
 			},
 			toLocalStorageJSON: function toLocalStorageJSON() {
-				return _.mapObject(this.attributes, function (value) {
+				return _.mapValues(this.attributes, function (value) {
 					if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 						return value;
 					}
