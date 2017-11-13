@@ -93,7 +93,7 @@ _.extend(Model.prototype, {
 				this.set(prop, value)
 				return true
 			},
-			getPrototypeOf(target) {
+			getPrototypeOf: target => {
 				return Object.getPrototypeOf(this)
 			},
 			setPrototypeOf(target, proto) {
