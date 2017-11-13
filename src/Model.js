@@ -4,12 +4,6 @@
  * -- rewritten in ES6
  * -- ported by Phong Vu
  */
-import _defaults from 'lodash/defaultsDeep'
-import _isFunction from 'lodash/isFunction'
-import _isObject from 'lodash/isObject'
-import _isString from 'lodash/isString'
-import _matches from 'lodash/matches'
-import _extend from 'lodash/extend'
 import Events from './Events'
 import sync from '../lib/sync'
 import extend from '../lib/extend'
@@ -27,7 +21,7 @@ class Model {
 		if (options.collection) this.collection = options.collection
 		if (options.parse) attrs = this.parse(attrs, options) || {}
 		const defaults = _.result(this, 'defaults')
-		attrs = _defaults({}, attrs, defaults)
+		attrs = _.defaults({}, attrs, defaults)
 		this.set(attrs, options)
 		this.changed = {}
 		this.initialize(...args)
@@ -167,7 +161,7 @@ class Model {
 		return this.set(
 			attr,
 			void 0,
-			_extend({}, options, { unset: true })
+			_.extend({}, options, { unset: true })
 		)
 	}
 
@@ -175,7 +169,7 @@ class Model {
 	clear(options) {
 		const attrs = {}
 		for (const key in this.attributes) attrs[key] = void 0
-		return this.set(attrs, _extend({}, options, { unset: true }))
+		return this.set(attrs, _.extend({}, options, { unset: true }))
 	}
 
 	// Determine if the model has changed since the last `"change"` event.
@@ -221,7 +215,7 @@ class Model {
 	// Fetch the model from the server, merging the response with the model's
 	// local attributes. Any changed attributes will trigger a "change" event.
 	fetch(options) {
-		options = _extend({ parse: true }, options)
+		options = _.extend({ parse: true }, options)
 		const model = this
 		const success = options.success
 		options.success = function(resp) {
@@ -248,7 +242,7 @@ class Model {
 		} else {
 			;(attrs = {})[key] = val
 		}
-		options = _extend({ validate: true, parse: true }, options)
+		options = _.extend({ validate: true, parse: true }, options)
 		const wait = options.wait
 		// If we're not waiting and attributes exist, save acts as
 		// `set(attr).save(null, opts)` with validation. Otherwise, check if
@@ -269,7 +263,7 @@ class Model {
 			let serverAttrs = options.parse
 				? model.parse(resp, options)
 				: resp
-			if (wait) serverAttrs = _extend({}, attrs, serverAttrs)
+			if (wait) serverAttrs = _.extend({}, attrs, serverAttrs)
 			if (serverAttrs && !model.set(serverAttrs, options))
 				return false
 			if (success) success.call(options.context, model, resp, options)
@@ -277,7 +271,7 @@ class Model {
 		}
 		wrapError(this, options)
 		// Set temporary attributes if `{wait: true}` to properly find new ids.
-		if (attrs && wait) this.attributes = _extend({}, attributes, attrs)
+		if (attrs && wait) this.attributes = _.extend({}, attributes, attrs)
 		const method = this.isNew()
 			? 'create'
 			: options.patch ? 'patch' : 'update'
@@ -347,14 +341,14 @@ class Model {
 
 	// Check if the model is currently in a valid state.
 	isValid(options) {
-		return this._validate({}, _extend({}, options, { validate: true }))
+		return this._validate({}, _.extend({}, options, { validate: true }))
 	}
 
 	// Run validation against the next complete set of model attributes,
 	// returning `true` if all is well. Otherwise, fire an `"invalid"` event.
 	_validate(attrs, options) {
 		if (!options.validate || !this.validate) return true
-		attrs = _extend({}, this.attributes, attrs)
+		attrs = _.extend({}, this.attributes, attrs)
 		const error = (this.validationError =
 			this.validate(attrs, options) || null)
 		if (!error) return true
@@ -362,15 +356,16 @@ class Model {
 			'invalid',
 			this,
 			error,
-			_extend(options, { validationError: error })
+			_.extend(options, { validationError: error })
 		)
 		return false
 	}
 }
 
 Model.extend = extend
+Events(Model.prototype)
 
-export default Events(Model)
+export default Model
 
 addUnderscoreMethods(
 	Model,
@@ -389,10 +384,10 @@ addUnderscoreMethods(
 
 // Support `collection.sortBy('attr')` and `collection.findWhere({id: 1})`.
 export function cb(iteratee, instance) {
-	if (_isFunction(iteratee)) return iteratee
-	if (_isObject(iteratee) && !instance._isModel(iteratee))
+	if (_.isFunction(iteratee)) return iteratee
+	if (_.isObject(iteratee) && !instance._isModel(iteratee))
 		return modelMatcher(iteratee)
-	if (_isString(iteratee))
+	if (_.isString(iteratee))
 		return function(model) {
 			return model.get(iteratee)
 		}
@@ -400,7 +395,7 @@ export function cb(iteratee, instance) {
 }
 
 export function modelMatcher(attrs) {
-	const matcher = _matches(attrs)
+	const matcher = _.matches(attrs)
 	return function(model) {
 		return matcher(model.attributes)
 	}

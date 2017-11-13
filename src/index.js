@@ -1,6 +1,14 @@
 import _ from 'underscore'
-import BackboneModel from './Model'
-import BackboneCollection from './Collection'
+// import BackboneModel from './Model'
+// import BackboneCollection from './Collection'
+import Backbone from 'backbone'
+import _set from 'lodash/set'
+import _mapValues from 'lodash/mapValues'
+
+const BackboneModel = Backbone.Model
+const BackboneCollection = Backbone.Collection
+
+const localStorage = global.localStorage
 
 function Compute(deps, options) {
 	if (!(this instanceof Compute)) return new Compute(deps, options)
@@ -35,41 +43,11 @@ function Model(attrs = {}, options = {}) {
 	_.each(this.computes, this._registerComputeValue, this)
 	BackboneModel.apply(this, arguments)
 
-	Object.defineProperty(this, 'proxy', {
-		configurable: false,
-		enumerable: false,
-		writable: false,
-		value: new Proxy(this.attributes, {
-			has: (target, prop) => {
-				return this.has(prop)
-			},
-			get: (target, prop) => {
-				const result = this.get(prop)
-				if (result instanceof Model) return result.proxy
-				return result
-			},
-			set: (target, prop, value) => {
-				this.set(prop, value)
-				return true
-			},
-			deleteProperty: (target, prop) => {
-				this.unset(prop)
-				return true
-			},
-			defineProperty: (target, prop, descriptor) => {
-				return true
-			},
-			ownKeys: target => {
-				return this.keys()
-			}
-		})
-	})
-
 	if (!_.isUndefined(localStorage) && !_.isUndefined(localStorageKey)) {
 		const storedData = localStorage.getItem(localStorageKey)
 		if (storedData) {
 			try {
-				target.set(JSON.parse(storedData))
+				this.set(JSON.parse(storedData))
 			} catch (e) {
 				console.warn(
 					'Unable to restore from localStorage #(',
@@ -100,6 +78,39 @@ _.extend(Model.prototype, {
 	relations: {},
 	computes: {},
 	defaults: {},
+
+	proxy() {
+		return new Proxy(this.attributes, {
+			has: (target, prop) => {
+				return this.has(prop)
+			},
+			get: (target, prop) => {
+				const result = this.get(prop)
+				if (result instanceof Model) return result.proxy
+				return result
+			},
+			set: (target, prop, value) => {
+				this.set(prop, value)
+				return true
+			},
+			getPrototypeOf(target) {
+				return Object.getPrototypeOf(this)
+			},
+			setPrototypeOf(target, proto) {
+				return true
+			},
+			deleteProperty: (target, prop) => {
+				this.unset(prop)
+				return true
+			},
+			defineProperty: (target, prop, descriptor) => {
+				return true
+			},
+			ownKeys: target => {
+				return this.keys()
+			}
+		})
+	},
 
 	subscribe(events, handler, context) {
 		if (typeof events !== 'string') return
@@ -225,25 +236,28 @@ _.extend(Model.prototype, {
 			return this._set(key, options)
 		}
 		if (typeof key === 'string') {
-			if (!key.match(/[.\[]/)) return this._set(key, val, options)
-			const regex = /(\w+)(?:\[([0-9]+)\])?/
-			const keys = key.split('.')
-			const setAttr = keys.pop().match(regex)
-			const getAttr = keys.join('.')
-			if (!setAttr[2]) {
-				var setter = this.get(getAttr)
-				if (setter instanceof BackboneModel)
-					setter.set(setAttr[1], val, options)
-				else if (typeof setter === 'object') setter[setAttr[1]] = val
-				return this
-			}
-			const collection = this.get(`${getAttr}.${setAttr[1]}`)
-			if (collection instanceof BackboneCollection)
-				collection.at(parseInt(setAttr[2])).set(val, options)
-			else if (typeof setter === 'object')
-				collection[parseInt(setAttr[2])] = val
-			this.trigger(`change:${setAttr}`, this, options)
+			return this._set(_set({}, key, val), options)
 		}
+		// if (typeof key === 'string') {
+		// 	if (!key.match(/[.\[]/)) return this._set(key, val, options)
+		// 	const regex = /(\w+)(?:\[([0-9]+)\])?/
+		// 	const keys = key.split('.')
+		// 	const setAttr = keys.pop().match(regex)
+		// 	const getAttr = keys.join('.')
+		// 	if (!setAttr[2]) {
+		// 		var setter = this.get(getAttr)
+		// 		if (setter instanceof BackboneModel)
+		// 			setter.set(setAttr[1], val, options)
+		// 		else if (typeof setter === 'object') setter[setAttr[1]] = val
+		// 		return this
+		// 	}
+		// 	const collection = this.get(`${getAttr}.${setAttr[1]}`)
+		// 	if (collection instanceof BackboneCollection)
+		// 		collection.at(parseInt(setAttr[2])).set(val, options)
+		// 	else if (typeof setter === 'object')
+		// 		collection[parseInt(setAttr[2])] = val
+		// 	this.trigger(`change:${setAttr}`, this, options)
+		// }
 		return this
 	},
 
@@ -360,7 +374,7 @@ _.extend(Model.prototype, {
 	},
 
 	toLocalStorageJSON() {
-		return _.mapObject(this.attributes, value => {
+		return _mapValues(this.attributes, value => {
 			if (
 				typeof value === 'string' ||
 				typeof value === 'number' ||
@@ -783,3 +797,4 @@ function cb(value, context, argCount) {
 exports.Model = Model
 exports.Compute = Compute
 exports.Collection = Collection
+exports.AUTHOR = 'Phong Vu'

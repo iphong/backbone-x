@@ -425,8 +425,9 @@ class Collection {
 }
 
 Collection.extend = extend
+Events(Collection.prototype)
 
-export default Events(Collection)
+export default Collection
 
 addUnderscoreMethods(
 	Collection,

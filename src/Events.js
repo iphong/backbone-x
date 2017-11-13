@@ -1,7 +1,3 @@
-import _uniqueId from 'lodash/uniqueId'
-import _once from 'lodash/once'
-import _bind from 'lodash/bind'
-import _extend from 'lodash/extend'
 import _ from 'underscore'
 
 const eventSplitter = /\s+/
@@ -14,7 +10,7 @@ export default function(target) {
 	} else {
 		return target
 	}
-	_extend(output, {
+	_.extend(output, {
 		// Bind an event to a `callback` function. Passing `"all"` will bind
 		// the callback to all events fired.
 		on(name, callback, context) {
@@ -26,14 +22,14 @@ export default function(target) {
 		// for easier unbinding later.
 		listenTo(obj, name, callback) {
 			if (!(obj instanceof Events)) return this
-			const id = obj._listenId || (obj._listenId = _uniqueId('l'))
+			const id = obj._listenId || (obj._listenId = _.uniqueId('l'))
 			const listeningTo = this._listeningTo || (this._listeningTo = {})
 			let listening = listeningTo[id]
 			// This object is not listening to any other events on `obj` yet.
 			// Setup the necessary references to track the listening callbacks.
 			if (!listening) {
 				const thisId =
-					this._listenId || (this._listenId = _uniqueId('l'))
+					this._listenId || (this._listenId = _.uniqueId('l'))
 				listening = listeningTo[id] = {
 					obj: obj,
 					objId: id,
@@ -87,7 +83,7 @@ export default function(target) {
 				{},
 				name,
 				callback,
-				_bind(this.off, this)
+				_.bind(this.off, this)
 			)
 			if (typeof name === 'string' && context == null) callback = void 0
 			return this.on(events, callback, context)
@@ -101,7 +97,7 @@ export default function(target) {
 				{},
 				name,
 				callback,
-				_bind(this.stopListening, this, obj)
+				_.bind(this.stopListening, this, obj)
 			)
 			return this.listenTo(obj, events)
 		},
@@ -233,7 +229,7 @@ function offApi(events, name, callback, options) {
 // `offer` unbinds the `onceWrapper` after it has been called.
 function onceMap(map, name, callback, offer) {
 	if (callback) {
-		const once = (map[name] = _once(function() {
+		const once = (map[name] = _.once(function() {
 			offer(name, once)
 			callback.apply(this, arguments)
 		}))

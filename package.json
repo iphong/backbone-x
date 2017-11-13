@@ -10,12 +10,12 @@
 		"type": "git",
 		"url": "https://github.com/iphong/backbone-x.git"
 	},
-	"main": "./model.js",
-	"module": "./dist/index.js",
+	"main": "./dist/index.js",
 	"scripts": {
 		"start": "webpack"
 	},
 	"dependencies": {
+		"backbone": "^1.3.3",
 		"lodash": "latest",
 		"underscore": "latest"
 	},
