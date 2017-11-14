@@ -31,6 +31,22 @@ function Compute(deps, options) {
 	})
 }
 
+function Observable(attrs) {
+	const map = obj => {
+		return _mapValues(obj, (value, key) => {
+			if (Object.getPrototypeOf(value) === Object.prototype) {
+				return Model(map(value))
+			}
+			if (_.isFunction(value)) {
+				return Compute(value)
+			}
+			return value
+		})
+	}
+	const model = Model(map(attrs))
+	return (new model({})).proxy()
+}
+
 function Model(attrs = {}, options = {}) {
 	if (!(this instanceof Model)) {
 		if (isPrototypeOf(attrs, Model))
@@ -798,4 +814,5 @@ function cb(value, context, argCount) {
 exports.Model = Model
 exports.Compute = Compute
 exports.Collection = Collection
+exports.Observable = Observable
 exports.AUTHOR = 'Phong Vu'
