@@ -4,15 +4,15 @@
  * -- rewritten in ES6
  * -- ported by Phong Vu
  */
-import _defaults from 'lodash/defaultsDeep'
 import Events from './Events'
 import sync from '../lib/sync'
+import extend from '../lib/extend'
 import addUnderscoreMethods from '../lib/addUnderscoreMethods'
-const _ = require('underscore')
 
-export default class Model extends Events {
+import _ from 'underscore'
+
+class Model {
 	constructor(...args) {
-		super()
 		let [attrs, options] = args
 		attrs = { ...attrs }
 		options = { ...options }
@@ -21,7 +21,7 @@ export default class Model extends Events {
 		if (options.collection) this.collection = options.collection
 		if (options.parse) attrs = this.parse(attrs, options) || {}
 		const defaults = _.result(this, 'defaults')
-		attrs = _defaults({}, attrs, defaults)
+		attrs = _.defaults({}, attrs, defaults)
 		this.set(attrs, options)
 		this.changed = {}
 		this.initialize(...args)
@@ -78,7 +78,7 @@ export default class Model extends Events {
 	// Returns `true` if the attribute contains a value that is not null
 	// or undefined.
 	has(attr) {
-		return this.get(attr) != null
+		return this.get(attr) !== null
 	}
 
 	// Special-cased proxy to underscore's `_.matches` method.
@@ -90,7 +90,7 @@ export default class Model extends Events {
 	// the core primitive operation of a model, updating the data and notifying
 	// anyone who needs to know about the change in state. The heart of the beast.
 	set(key, val, options) {
-		if (key == null) return this
+		if (key === null) return this
 		// Handle both `"key", value` and `{key: value}` -style arguments.
 		let attrs
 		if (typeof key === 'object') {
@@ -118,8 +118,8 @@ export default class Model extends Events {
 		// For each `set` attribute, update or delete the current value.
 		for (const attr in attrs) {
 			val = attrs[attr]
-			if (!_.isEqual(current[attr], val)) changes.push(attr)
-			if (!_.isEqual(prev[attr], val)) {
+			if (current[attr] !== val) changes.push(attr)
+			if (prev[attr] !== val) {
 				changed[attr] = val
 			} else {
 				delete changed[attr]
@@ -158,7 +158,11 @@ export default class Model extends Events {
 	// Remove an attribute from the model, firing `"change"`. `unset` is a noop
 	// if the attribute doesn't exist.
 	unset(attr, options) {
-		return this.set(attr, void 0, _.extend({}, options, { unset: true }))
+		return this.set(
+			attr,
+			void 0,
+			_.extend({}, options, { unset: true })
+		)
 	}
 
 	// Clear all attributes on the model, firing `"change"`.
@@ -171,7 +175,7 @@ export default class Model extends Events {
 	// Determine if the model has changed since the last `"change"` event.
 	// If you specify an attribute name, determine if that attribute has changed.
 	hasChanged(attr) {
-		if (attr == null) return !_.isEmpty(this.changed)
+		if (attr === null) return !_.isEmpty(this.changed)
 		return _.has(this.changed, attr)
 	}
 
@@ -183,11 +187,13 @@ export default class Model extends Events {
 	// determining if there *would be* a change.
 	changedAttributes(diff) {
 		if (!diff) return this.hasChanged() ? _.clone(this.changed) : false
-		const old = this._changing ? this._previousAttributes : this.attributes
+		const old = this._changing
+			? this._previousAttributes
+			: this.attributes
 		const changed = {}
 		for (const attr in diff) {
 			const val = diff[attr]
-			if (_.isEqual(old[attr], val)) continue
+			if (old[attr] === val) continue
 			changed[attr] = val
 		}
 		return _.size(changed) ? changed : false
@@ -196,7 +202,7 @@ export default class Model extends Events {
 	// Get the previous value of an attribute, recorded at the time the last
 	// `"change"` event was fired.
 	previous(attr) {
-		if (attr == null || !this._previousAttributes) return null
+		if (attr === null || !this._previousAttributes) return null
 		return this._previousAttributes[attr]
 	}
 
@@ -230,7 +236,7 @@ export default class Model extends Events {
 	save(key, val, options) {
 		// Handle both `"key", value` and `{key: value}` -style arguments.
 		let attrs
-		if (key == null || typeof key === 'object') {
+		if (key === null || typeof key === 'object') {
 			attrs = key
 			options = val
 		} else {
@@ -254,9 +260,12 @@ export default class Model extends Events {
 		options.success = function(resp) {
 			// Ensure attributes are restored during synchronous saves.
 			model.attributes = attributes
-			let serverAttrs = options.parse ? model.parse(resp, options) : resp
+			let serverAttrs = options.parse
+				? model.parse(resp, options)
+				: resp
 			if (wait) serverAttrs = _.extend({}, attrs, serverAttrs)
-			if (serverAttrs && !model.set(serverAttrs, options)) return false
+			if (serverAttrs && !model.set(serverAttrs, options))
+				return false
 			if (success) success.call(options.context, model, resp, options)
 			model.trigger('sync', model, resp, options)
 		}
@@ -311,7 +320,7 @@ export default class Model extends Events {
 			urlError()
 		if (this.isNew()) return base
 		const id = this.get(this.idAttribute)
-		return base.replace(/[^\/]$/, '$&/') + encodeURIComponent(id)
+		return base.replace(/[^/]$/, '$&/') + encodeURIComponent(id)
 	}
 
 	// **parse** converts a response into the hash of attributes to be `set` on
@@ -352,6 +361,11 @@ export default class Model extends Events {
 		return false
 	}
 }
+
+Model.extend = extend
+Events(Model.prototype)
+
+export default Model
 
 addUnderscoreMethods(
 	Model,

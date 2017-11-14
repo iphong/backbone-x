@@ -6,5 +6,12 @@
 </head>
 <body>
 <script src="../dist/index.js" type="text/javascript"></script>
+<script>
+	const { Model } = backbonex
+	const Person = Model({ name: Model({ first: '', last: '' }) })
+	const a = new Person
+	const b = a.proxy
+	a.on('all', e => console.log('event', e))
+</script>
 </body>
 </html>

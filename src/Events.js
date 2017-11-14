@@ -1,29 +1,35 @@
-import _uniqueId from 'lodash/uniqueId'
-import _once from 'lodash/once'
-import _bind from 'lodash/bind'
-import _extend from 'lodash/extend'
+import _ from 'underscore'
 
 const eventSplitter = /\s+/
 export default function(target) {
-	return class Events extends target {
+	let output
+	if (typeof target === 'function') {
+		output = target.prototype
+	} else if (typeof target === 'object') {
+		output = target
+	} else {
+		return target
+	}
+	_.extend(output, {
 		// Bind an event to a `callback` function. Passing `"all"` will bind
 		// the callback to all events fired.
 		on(name, callback, context) {
 			return internalOn(this, name, callback, context)
-		}
+		},
 
 		// Inversion-of-control versions of `on`. Tell *this* object to listen to
 		// an event in another object... keeping track of what it's listening to
 		// for easier unbinding later.
 		listenTo(obj, name, callback) {
 			if (!(obj instanceof Events)) return this
-			const id = obj._listenId || (obj._listenId = _uniqueId('l'))
+			const id = obj._listenId || (obj._listenId = _.uniqueId('l'))
 			const listeningTo = this._listeningTo || (this._listeningTo = {})
 			let listening = listeningTo[id]
 			// This object is not listening to any other events on `obj` yet.
 			// Setup the necessary references to track the listening callbacks.
 			if (!listening) {
-				const thisId = this._listenId || (this._listenId = _uniqueId('l'))
+				const thisId =
+					this._listenId || (this._listenId = _.uniqueId('l'))
 				listening = listeningTo[id] = {
 					obj: obj,
 					objId: id,
@@ -35,7 +41,7 @@ export default function(target) {
 			// Bind callbacks on obj, and keep track of them on listening.
 			internalOn(obj, name, callback, this, listening)
 			return this
-		}
+		},
 
 		// Remove one or many callbacks. If `context` is null, removes all
 		// callbacks with that function. If `callback` is null, removes all
@@ -48,7 +54,7 @@ export default function(target) {
 				listeners: this._listeners
 			})
 			return this
-		}
+		},
 
 		// Tell this object to stop listening to either specific events ... or
 		// to every object it's currently listening to.
@@ -64,7 +70,7 @@ export default function(target) {
 				listening.obj.off(name, callback, this)
 			}
 			return this
-		}
+		},
 
 		// Bind an event to only be triggered a single time. After the first time
 		// the callback is invoked, its listener will be removed. If multiple events
@@ -77,11 +83,11 @@ export default function(target) {
 				{},
 				name,
 				callback,
-				_bind(this.off, this)
+				_.bind(this.off, this)
 			)
 			if (typeof name === 'string' && context == null) callback = void 0
 			return this.on(events, callback, context)
-		}
+		},
 
 		// Inversion-of-control versions of `once`.
 		listenToOnce(obj, name, callback) {
@@ -91,10 +97,10 @@ export default function(target) {
 				{},
 				name,
 				callback,
-				_bind(this.stopListening, this, obj)
+				_.bind(this.stopListening, this, obj)
 			)
 			return this.listenTo(obj, events)
-		}
+		},
 
 		// Trigger one or many events, firing all bound callbacks. Callbacks are
 		// passed the same arguments as `trigger` is, apart from the event name
@@ -108,7 +114,8 @@ export default function(target) {
 			eventsApi(triggerApi, this._events, name, void 0, args)
 			return this
 		}
-	}
+	})
+	return target
 }
 // Iterates over the standard `event, callback` (as well as the fancy multiple
 // space-separated events `"change blur", callback` and jQuery-style event
@@ -222,7 +229,7 @@ function offApi(events, name, callback, options) {
 // `offer` unbinds the `onceWrapper` after it has been called.
 function onceMap(map, name, callback, offer) {
 	if (callback) {
-		const once = (map[name] = _once(function() {
+		const once = (map[name] = _.once(function() {
 			offer(name, once)
 			callback.apply(this, arguments)
 		}))
