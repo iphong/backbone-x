@@ -86,7 +86,7 @@ _.extend(Model.prototype, {
 			},
 			get: (target, prop) => {
 				const result = this.get(prop)
-				if (result instanceof Model) return result.proxy
+				if (result instanceof Model) return result.proxy()
 				return result
 			},
 			set: (target, prop, value) => {
