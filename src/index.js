@@ -85,6 +85,7 @@ _.extend(Model.prototype, {
 				return this.has(prop)
 			},
 			get: (target, prop) => {
+				if (prop === '$model') return this
 				const result = this.get(prop)
 				if (result instanceof Model) return result.proxy()
 				return result
