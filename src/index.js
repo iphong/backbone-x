@@ -33,7 +33,7 @@ function Compute(deps, options) {
 
 function Observable(attrs) {
 	const map = obj => {
-		return _mapValues(obj, (value, key) => {
+		return _.mapObject(obj, (value, key) => {
 			if (Object.getPrototypeOf(value) === Object.prototype) {
 				return Model(map(value))
 			}
