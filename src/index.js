@@ -377,7 +377,6 @@ _.extend(Model.prototype, {
 
 	toJSON2: function(options) {
 		const attrs = _.clone(this.attributes)
-		attrs.__proto__ = null
 
 		_.each(this.relations, function(rel, key) {
 			if (_.has(attrs, key)) {
@@ -692,7 +691,6 @@ _.extend(Collection.prototype, {
 				? model.toCompactJSON()
 				: model.toJSON()
 		})
-		models.__proto__ = null
 		return models
 	},
 
