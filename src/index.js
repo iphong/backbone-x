@@ -44,7 +44,7 @@ function Observable(attrs) {
 		})
 	}
 	const model = Model(map(attrs))
-	return (new model({})).proxy()
+	return (new model({})).getProxy()
 }
 
 function Model(attrs = {}, options = {}) {
@@ -59,6 +59,7 @@ function Model(attrs = {}, options = {}) {
 	_.each(this.computes, this._registerComputeValue, this)
 	BackboneModel.apply(this, arguments)
 
+	this.proxy = this.getProxy()
 	if (!_.isUndefined(localStorage) && !_.isUndefined(localStorageKey)) {
 		const storedData = localStorage.getItem(localStorageKey)
 		if (storedData) {
@@ -77,7 +78,7 @@ function Model(attrs = {}, options = {}) {
 			_.debounce(() => {
 				localStorage.setItem(
 					localStorageKey,
-					JSON.stringify(this.toLocalStorageJSON())
+					JSON.stringify(this.toJSON())
 				)
 			}, 1000)
 		)
@@ -95,7 +96,7 @@ _.extend(Model.prototype, {
 	computes: {},
 	defaults: {},
 
-	proxy() {
+	getProxy() {
 		return new Proxy(this.attributes, {
 			has: (target, prop) => {
 				return this.has(prop)
@@ -103,7 +104,7 @@ _.extend(Model.prototype, {
 			get: (target, prop) => {
 				if (prop === '$model') return this
 				const result = this.get(prop)
-				if (result instanceof Model) return result.proxy()
+				if (result instanceof Model) return result.getProxy()
 				return result
 			},
 			set: (target, prop, value) => {
@@ -143,13 +144,14 @@ _.extend(Model.prototype, {
 	},
 
 	get: function(key) {
+		if (!_.isString(key)) return
 		let value = this
 		const regex = /(\w+)(?:#(\w+))?/g
 		let match
 		while ((match = regex.exec(key))) {
 			value =
 				value instanceof BackboneModel
-					? getComputedValue(value, match[1])
+					? getComputedValue(value.$model || value, match[1])
 					: typeof value === 'object' ? value[match[1]] : undefined
 			if (match[2])
 				value =
@@ -375,43 +377,6 @@ _.extend(Model.prototype, {
 		return this.set(attrs, _.extend({}, options, { unset: true }))
 	},
 
-	toJSON2: function(options) {
-		const attrs = _.clone(this.attributes)
-		attrs.__proto__ = null
-
-		_.each(this.relations, function(rel, key) {
-			if (_.has(attrs, key)) {
-				attrs[key] = attrs[key].toJSON()
-			} else {
-				attrs[key] = new rel().toJSON()
-			}
-		})
-
-		return attrs
-	},
-
-	toLocalStorageJSON() {
-		return _mapValues(this.attributes, value => {
-			if (
-				typeof value === 'string' ||
-				typeof value === 'number' ||
-				typeof value === 'boolean'
-			) {
-				return value
-			}
-			if (value && typeof value === 'object') {
-				const proto = Object.getPrototypeOf(value)
-				if (proto === Array.prototype || proto === Object.prototype) {
-					return value
-				}
-			}
-			if (value instanceof Model) {
-				return value.toLocalStorageJSON()
-			}
-			return void 0
-		})
-	},
-
 	toJSON: function() {
 		let attr
 		const obj = {}
@@ -422,9 +387,18 @@ _.extend(Model.prototype, {
 				attr instanceof BackboneModel ||
 				attr instanceof BackboneCollection
 			)
-				attr = attr.toJSON()
-			else if (_.isObject(attr)) attr = _.clone(attr)
-			obj[key] = attr
+				attr = (attr.$model || attr).toJSON()
+			else if (_.isObject(attr)) {
+				const proto = Object.getPrototypeOf(attr)
+				if (proto === Array.prototype || proto === Object.prototype) {
+					attr = _.clone(attr)
+				} else {
+					attr = void 0
+				}
+			}
+			if (!_.isUndefined(attr)) {
+				obj[key] = attr
+			}
 		}
 		return obj
 	},
@@ -692,7 +666,6 @@ _.extend(Collection.prototype, {
 				? model.toCompactJSON()
 				: model.toJSON()
 		})
-		models.__proto__ = null
 		return models
 	},
 
@@ -753,7 +726,9 @@ function getComputedValue(model, key) {
 		const deps = _(compute.deps).map(function(dep) {
 			return model.get(dep)
 		})
-		return compute.get.apply(model, deps)
+		if (_.isFunction(compute.get)) {
+			return compute.get.apply(model, deps)
+		}
 	}
 	return model.attributes[key]
 }
