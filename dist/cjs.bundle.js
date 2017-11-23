@@ -2,7 +2,7 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var _$2 = require('underscore');
+var _$1 = require('underscore');
 
 var methodMap = {
 	create: 'POST',
@@ -15,7 +15,7 @@ var methodMap = {
 function sync(method, model, options) {
 	var type = methodMap[method];
 	// Default options, unless specified.
-	_$2.defaults(options || (options = {}), {
+	_$1.defaults(options || (options = {}), {
 		emulateHTTP: false,
 		emulateJSON: false
 	});
@@ -23,7 +23,7 @@ function sync(method, model, options) {
 	var params = { type: type, dataType: 'json'
 		// Ensure that we have a URL.
 	};if (!options.url) {
-		params.url = _$2.result(model, 'url');
+		params.url = _$1.result(model, 'url');
 	}
 	// Ensure that we have the appropriate request data.
 	if (options.data === null && model && (method === 'create' || method === 'update' || method === 'patch')) {
@@ -94,6 +94,61 @@ function ajax(options) {
 	return xhr;
 }
 
+var _$2 = require('underscore');
+
+var slice = Array.prototype.slice;
+
+var mixins = function (attribute, methods) {
+	return function (Class) {
+		_$2.each(methods, function (length, method) {
+			if (_$2[method]) Class.prototype[method] = addMethod(length, method, attribute);
+		});
+		return Class;
+	};
+};
+
+function addMethod(length, method, attribute) {
+	switch (length) {
+		case 1:
+			return function () {
+				return _$2[method](this[attribute]);
+			};
+		case 2:
+			return function (value) {
+				return _$2[method](this[attribute], value);
+			};
+		case 3:
+			return function (iteratee, context) {
+				return _$2[method](this[attribute], cb(iteratee, this), context);
+			};
+		case 4:
+			return function (iteratee, defaultVal, context) {
+				return _$2[method](this[attribute], cb(iteratee, this), defaultVal, context);
+			};
+		default:
+			return function () {
+				var args = slice.call(arguments);
+				args.unshift(this[attribute]);
+				return _$2[method].apply(_$2, args);
+			};
+	}
+}
+
+function cb(iteratee, instance) {
+	if (_$2.isFunction(iteratee)) return iteratee;
+	if (_$2.isObject(iteratee) && !instance._isModel(iteratee)) return modelMatcher(iteratee);
+	if (_$2.isString(iteratee)) return function (model) {
+		return model.get(iteratee);
+	};
+	return iteratee;
+}
+function modelMatcher(attrs) {
+	var matcher = _$2.matches(attrs);
+	return function (model) {
+		return matcher(model.attributes);
+	};
+}
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
 } : function (obj) {
@@ -138,7 +193,20 @@ var createClass = function () {
 
 
 
+var defineProperty = function (obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
 
+  return obj;
+};
 
 var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
@@ -189,6 +257,48 @@ var possibleConstructorReturn = function (self, call) {
 
   return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
+
+
+
+
+
+var slicedToArray = function () {
+  function sliceIterator(arr, i) {
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
+
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"]) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  return function (arr, i) {
+    if (Array.isArray(arr)) {
+      return arr;
+    } else if (Symbol.iterator in Object(arr)) {
+      return sliceIterator(arr, i);
+    } else {
+      throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+  };
+}();
 
 var _$3 = require('underscore');
 
@@ -464,61 +574,6 @@ function triggerEvents(events, args) {
 }
 // Aliases for backwards compatibility.
 
-var _$4 = require('underscore');
-
-var slice = Array.prototype.slice;
-
-var mixins = function (attribute, methods) {
-	return function (Class) {
-		_$4.each(methods, function (length, method) {
-			if (_$4[method]) Class.prototype[method] = addMethod(length, method, attribute);
-		});
-		return Class;
-	};
-};
-
-function addMethod(length, method, attribute) {
-	switch (length) {
-		case 1:
-			return function () {
-				return _$4[method](this[attribute]);
-			};
-		case 2:
-			return function (value) {
-				return _$4[method](this[attribute], value);
-			};
-		case 3:
-			return function (iteratee, context) {
-				return _$4[method](this[attribute], cb(iteratee, this), context);
-			};
-		case 4:
-			return function (iteratee, defaultVal, context) {
-				return _$4[method](this[attribute], cb(iteratee, this), defaultVal, context);
-			};
-		default:
-			return function () {
-				var args = slice.call(arguments);
-				args.unshift(this[attribute]);
-				return _$4[method].apply(_$4, args);
-			};
-	}
-}
-
-function cb(iteratee, instance) {
-	if (_$4.isFunction(iteratee)) return iteratee;
-	if (_$4.isObject(iteratee) && !instance._isModel(iteratee)) return modelMatcher(iteratee);
-	if (_$4.isString(iteratee)) return function (model) {
-		return model.get(iteratee);
-	};
-	return iteratee;
-}
-function modelMatcher(attrs) {
-	var matcher = _$4.matches(attrs);
-	return function (model) {
-		return matcher(model.attributes);
-	};
-}
-
 var MODEL = Symbol('Model');
 var OBSERVER = Symbol('Observer');
 var COLLECTION = Symbol('Collection');
@@ -534,11 +589,13 @@ var _temp;
  * -- rewritten in ES6
  * -- ported by Phong Vu
  */
-var _$1 = require('underscore');
-var _set$1 = require('lodash/set');
-var _mapValues$1 = require('lodash/mapValues');
+var _ = require('underscore');
+var _set = require('lodash/set');
+var _get = require('lodash/get');
+var _mapValues = require('lodash/mapValues');
 var _cloneDeep = require('lodash/cloneDeep');
 
+var localStorage = global.localStorage;
 var COPY = ['idAttribute', 'defaults', 'relations', 'computes'];
 
 var Model$1 = (_dec = mixins('attributes', {
@@ -552,6 +609,60 @@ var Model$1 = (_dec = mixins('attributes', {
 	isEmpty: 1
 }), events(_class = _dec(_class = (_temp = _class2 = function () {
 	createClass(Model, null, [{
+		key: 'create',
+		value: function create(props, options) {
+			var Class = this.define(props);
+			var model = new Class({}, options);
+			return model.proxy;
+		}
+	}, {
+		key: 'define',
+		value: function define(shape) {
+			var protos = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+			var statics = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+			switch (typeof shape === 'undefined' ? 'undefined' : _typeof(shape)) {
+				case 'object':
+					var defaults$$1 = _extends({}, protos.defaults);
+					var computes = _extends({}, protos.computes);
+					var relations = _extends({}, protos.relations);
+					Object.getOwnPropertyNames(shape).forEach(function (key) {
+						var prop = Object.getOwnPropertyDescriptor(shape, key);
+						if (prop.value) {
+							switch (_typeof(prop.value)) {
+								case 'function':
+									if (prop.value.prototype instanceof Model || prop.value.prototype instanceof Model.Collection) {
+										relations[key] = prop.value;
+										defaults$$1[key] = relations[key].defaults;
+									}
+									break;
+								case 'object':
+									if (!Array.isArray(prop.value)) {
+										relations[key] = Model.define(prop.value);
+										defaults$$1[key] = relations[key].defaults;
+										break;
+									}
+								default:
+									defaults$$1[key] = prop.value;
+							}
+						} else if (prop.get || prop.set) {
+							computes[key] = _.pick(prop, 'get', 'set');
+						}
+					});
+					return this.extend(protos, _extends({
+						defaults: defaults$$1,
+						computes: computes,
+						relations: relations
+					}, statics));
+				case 'function':
+					Object.setPrototypeOf(shape.prototype, this.prototype);
+					Object.assign(shape, _.pick(this, COPY));
+					return shape;
+				default:
+					return this;
+			}
+		}
+	}, {
 		key: 'extend',
 		value: function extend(prototypes, statics) {
 			var M = function (_ref) {
@@ -565,19 +676,14 @@ var Model$1 = (_dec = mixins('attributes', {
 				return M;
 			}(this);
 
-			Object.assign(M, statics, _$1.pick(prototypes, COPY));
-			Object.assign(M.prototype, _$1.omit(prototypes, COPY));
+			Object.assign(M, statics, _.pick(prototypes, COPY));
+			Object.assign(M.prototype, _.omit(prototypes, COPY));
 			return M;
-		}
-	}, {
-		key: 'observer',
-		value: function observer(proxy) {
-			return proxy ? proxy[OBSERVER] : void 0;
 		}
 	}, {
 		key: 'watch',
 		value: function watch(proxy) {
-			var observer = this.observer(proxy);
+			var observer = proxy[OBSERVER];
 			if (observer) {
 				for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
 					args[_key - 1] = arguments[_key];
@@ -589,14 +695,10 @@ var Model$1 = (_dec = mixins('attributes', {
 	}]);
 
 	function Model() {
-		var _this2 = this;
+		var _Object$definePropert,
+		    _this2 = this;
 
 		classCallCheck(this, Model);
-		this.attributes = {};
-		this.changed = {};
-
-		this[MODEL] = true;
-		this[OBSERVER] = this;
 
 		for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
 			args[_key2] = arguments[_key2];
@@ -607,13 +709,17 @@ var Model$1 = (_dec = mixins('attributes', {
 		    _args$2 = args[1],
 		    options = _args$2 === undefined ? {} : _args$2;
 
-		this.cid = _$1.uniqueId(this.cidPrefix);
+		this.cid = _.uniqueId(this.cidPrefix);
+		this.attributes = {};
 		this.proxy = this._createProxy();
-		Object.assign(this, _$1.pick(options, 'collection', '_parent', '_relatedKey'));
-		this.set(Object.assign(_cloneDeep(_$1.result(this, 'defaults')) || {}, options.parse ? this.parse(attrs, options) : attrs), options);
+		this.changed = {};
+		Object.defineProperties(this, (_Object$definePropert = {}, defineProperty(_Object$definePropert, MODEL, { value: true }), defineProperty(_Object$definePropert, OBSERVER, { value: this }), _Object$definePropert));
+		Object.assign(this, _.pick(options, 'collection', '_parent', '_relatedKey'));
+		this.set(Object.assign(_cloneDeep(_.result(this, 'defaults')) || {}, options.parse ? this.parse(attrs, options) : attrs), options);
 		var localStorageKey = options.localStorageKey;
-		if (!_$1.isUndefined(localStorage)) {
-			if (!_$1.isUndefined(localStorageKey)) {
+		if (!_.isUndefined(localStorage)) {
+			if (!_.isUndefined(localStorageKey)) {
+				console.log('begin localStorage');
 				var storedData = localStorage.getItem(localStorageKey);
 				if (storedData) {
 					try {
@@ -622,7 +728,7 @@ var Model$1 = (_dec = mixins('attributes', {
 						console.warn('Unable to restore from localStorage #(', localStorageKey, ')');
 					}
 				}
-				this.on('all', _$1.debounce(function () {
+				this.on('all', _.debounce(function () {
 					localStorage.setItem(localStorageKey, JSON.stringify(_this2.toJSON()));
 				}, 1000));
 			}
@@ -654,7 +760,7 @@ var Model$1 = (_dec = mixins('attributes', {
 			var keys = events$$1.split(/\s/);
 			this.on('change', function () {
 				var changes = Object.keys(_this3.changed);
-				var matched = _$1.intersection(keys, changes).length;
+				var matched = _.intersection(keys, changes).length;
 				if (matched) {
 					handler.call(context);
 				}
@@ -671,21 +777,19 @@ var Model$1 = (_dec = mixins('attributes', {
 			var attrs = Object.assign({}, this.attributes);
 			for (var key in attrs) {
 				attr = this.get(key);
-				if (_$1.isObject(attr)) {
-					if (attr instanceof Model) {
-						attr = (attr.$ || attr).toJSON();
-					} else if (typeof attr.toJSON === 'function') {
-						attr = attr.toJSON();
+				if (_.isObject(attr)) {
+					if (attr instanceof Model || attr instanceof Model.Collection) {
+						attr = (attr[OBSERVER] || attr).toJSON();
 					} else {
 						var proto = Object.getPrototypeOf(attr);
 						if (proto === Array.prototype || proto === Object.prototype) {
-							attr = _$1.clone(attr);
+							attr = _.clone(attr);
 						} else {
 							attr = void 0;
 						}
 					}
 				}
-				if (!_$1.isUndefined(attr)) {
+				if (!_.isUndefined(attr)) {
 					obj[key] = attr;
 				}
 			}
@@ -704,8 +808,7 @@ var Model$1 = (_dec = mixins('attributes', {
 					} else if (typeof attr.toJSON === 'function') {
 						attr = attr.toJSON();
 					}
-					if (attr instanceof Compute) continue;
-					if (_$1.isEqual(attr, this.defaults[key])) continue;
+					if (_.isEqual(attr, this.defaults[key])) continue;
 
 					obj[key] = attr;
 				}
@@ -718,13 +821,41 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'get',
 		value: function get$$1(key) {
-			if (!(typeof key === 'string')) return void 0;
+			if (typeof key !== 'string') return void 0;
+			var match = void 0;
 			var value = this;
 			var regex = /(\w+)(?:#(\w+))?/g;
-			var match = void 0;
 			while (match = regex.exec(key)) {
-				value = value instanceof Model ? value.attributes[match[1]] : (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' ? value[match[1]] : undefined;
-				if (match[2]) value = isCollection(value) ? value.get(match[2]) : value[match[2]];
+				var _match = match,
+				    _match2 = slicedToArray(_match, 3),
+				    m1 = _match2[1],
+				    m2 = _match2[2];
+
+				if (value === this) {
+					if (m1 in value.computes) {
+						value = _get(value.computes[m1], 'get');
+					} else {
+						value = _get(value.attributes, m1);
+					}
+					if (typeof value === 'function') {
+						value = value.call(this.proxy);
+					}
+				} else if (value instanceof Model) {
+					value = value.get(m1);
+				} else if (value instanceof Object) {
+					value = value[m1];
+				} else {
+					value = void 0;
+				}
+				if (m2) {
+					if (isCollection(value)) {
+						value = value.at(m2);
+					} else if (value instanceof Object) {
+						value = value[m2];
+					} else {
+						value = void 0;
+					}
+				}
 			}
 			return value;
 		}
@@ -734,7 +865,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'escape',
 		value: function escape(attr) {
-			return _$1.escape(this.get(attr));
+			return _.escape(this.get(attr));
 		}
 
 		// Returns `true` if the attribute contains a value that is not null
@@ -751,7 +882,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'matches',
 		value: function matches(attrs) {
-			return !!_$1.iteratee(attrs, this)(this.attributes);
+			return !!_.iteratee(attrs, this)(this.attributes);
 		}
 
 		// Set a hash of model attributes on the object, firing `"change"`. This is
@@ -773,7 +904,7 @@ var Model$1 = (_dec = mixins('attributes', {
 				attrs = key;
 				options = val;
 			} else {
-				attrs = _set$1({}, key, val);
+				attrs = _set({}, key, val);
 			}
 
 			options || (options = {});
@@ -789,7 +920,7 @@ var Model$1 = (_dec = mixins('attributes', {
 			this._changing = true;
 
 			if (!changing) {
-				this._previousAttributes = _$1.clone(this.attributes);
+				this._previousAttributes = _.clone(this.attributes);
 				this.changed = {};
 			}
 			current = this.attributes, prev = this._previousAttributes;
@@ -800,14 +931,17 @@ var Model$1 = (_dec = mixins('attributes', {
 			// For each `set` attribute, update or delete the current value.
 			Object.keys(attrs).forEach(function (attr) {
 				var value = attrs[attr];
-				// if (this.computes[attr]) {
-				// 	value = this.computes[attr].set.call(this, value, options)
-				// } else {
-				//
-				// }
-				// Inject in the relational lookup
-				value = _this4.setRelation(attr, value, options);
-				if (!_$1.isUndefined(value)) {
+				if (attr in _this4.computes) {
+					value = _get(_this4.computes[attr], 'set');
+					if (typeof value === 'function') {
+						value = value.call(_this4.proxy, val);
+					} else {
+						value = void 0;
+					}
+				} else {
+					value = _this4.setRelation(attr, value, options);
+				}
+				if (!_.isUndefined(value) && !_.isFunction(value)) {
 					if (current[attr] !== value) changes.push(attr);
 					if (prev[attr] !== value) {
 						_this4.changed[attr] = value;
@@ -853,15 +987,15 @@ var Model$1 = (_dec = mixins('attributes', {
 
 			if (options.unset && relation) delete relation.parent;
 
-			if (this.relations && _$1.has(this.relations, attr)) {
+			if (this.relations && _.has(this.relations, attr)) {
 				// If the relation already exists, we don't want to replace it, rather
 				// update the data within it whether it is a collection or model
-				if (relation && isCollection(relation)) {
+				if (relation && relation instanceof Model.Collection) {
 					// If the value that is being set is already a collection, use the models
 					// within the collection.
-					if (isCollection(val) || val instanceof Array) {
+					if (val instanceof Model.Collection || val instanceof Array) {
 						val = val.models || val;
-						modelsToAdd = _$1.clone(val);
+						modelsToAdd = _.clone(val);
 
 						relation.each(function (model, i) {
 							// If the model does not have an "id" skip logic to detect if it already
@@ -871,7 +1005,7 @@ var Model$1 = (_dec = mixins('attributes', {
 							// If the incoming model also exists within the existing collection,
 							// call set on that model. If it doesn't exist in the incoming array,
 							// then add it to a list that will be removed.
-							var rModel = _$1.find(val, function (_model) {
+							var rModel = _.find(val, function (_model) {
 								return _model[id] === model[id];
 							});
 
@@ -886,7 +1020,7 @@ var Model$1 = (_dec = mixins('attributes', {
 							}
 						});
 
-						_$1.each(modelsToRemove, function (model) {
+						_.each(modelsToRemove, function (model) {
 							relation.remove(model);
 						});
 
@@ -955,8 +1089,8 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'hasChanged',
 		value: function hasChanged(attr) {
-			if (attr == null) return !_$1.isEmpty(this.changed);
-			return _$1.has(this.changed, attr);
+			if (attr == null) return !_.isEmpty(this.changed);
+			return _.has(this.changed, attr);
 		}
 
 		// Return an object containing all the attributes that have changed, or
@@ -969,7 +1103,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'changedAttributes',
 		value: function changedAttributes(diff) {
-			if (!diff) return this.hasChanged() ? _$1.clone(this.changed) : false;
+			if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
 			var old = this._changing ? this._previousAttributes : this.attributes;
 			var changed = {};
 			for (var attr in diff) {
@@ -977,7 +1111,7 @@ var Model$1 = (_dec = mixins('attributes', {
 				if (old[attr] === val) continue;
 				changed[attr] = val;
 			}
-			return _$1.size(changed) ? changed : false;
+			return _.size(changed) ? changed : false;
 		}
 
 		// Get the previous value of an attribute, recorded at the time the last
@@ -996,7 +1130,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'previousAttributes',
 		value: function previousAttributes() {
-			return _$1.clone(this._previousAttributes);
+			return _.clone(this._previousAttributes);
 		}
 
 		// Fetch the model from the server, merging the response with the model's
@@ -1075,7 +1209,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'destroy',
 		value: function destroy(options) {
-			options = options ? _$1.clone(options) : {};
+			options = options ? _.clone(options) : {};
 			var model = this;
 			var success = options.success;
 			var wait = options.wait;
@@ -1090,7 +1224,7 @@ var Model$1 = (_dec = mixins('attributes', {
 			};
 			var xhr = false;
 			if (this.isNew()) {
-				_$1.defer(options.success);
+				_.defer(options.success);
 			} else {
 				wrapError(this, options);
 				xhr = sync('delete', this, options);
@@ -1106,7 +1240,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	}, {
 		key: 'url',
 		value: function url() {
-			var base = _$1.result(this, 'urlRoot') || _$1.result(this.collection, 'url') || urlError();
+			var base = _.result(this, 'urlRoot') || _.result(this.collection, 'url') || urlError();
 			if (this.isNew()) return base;
 			var id = this.get(this.idAttribute);
 			return base.replace(/[^/]$/, '$&/') + encodeURIComponent(id);
@@ -1163,7 +1297,9 @@ var Model$1 = (_dec = mixins('attributes', {
 		value: function _createProxy() {
 			var _this5 = this;
 
-			return new Proxy(this.attributes, {
+			var attrs = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.attributes;
+
+			return new Proxy(attrs, {
 				has: function has(target, prop) {
 					return _this5.has(prop);
 				},
@@ -1207,48 +1343,26 @@ var Model$1 = (_dec = mixins('attributes', {
 		value: function _triggerParentChange(options) {
 			var parent = this.collection || this._parent;
 			if (!parent) return;
+			var relatedKey = this._relatedKey || this.id;
+			Object.assign({}, options, { chained: true });
 
 			parent.changed = {};
-			Object.assign(options, { chained: true });
 
-			// Loop through every changed attribute
-			for (var key in this.changed) {
-				// Trigger "change:this.attr"
-				parent.changed[this._relatedKey + '.' + key] = this.changed[key];
-				parent.trigger('change:' + this._relatedKey + '.' + key, parent, this.changed[key], options);
+			if (relatedKey != null) {
+				// Loop through every changed attribute
+				for (var key in this.changed) {
+					parent.changed[relatedKey + '.' + key] = this.changed[key];
+					parent.trigger('change:' + relatedKey + '.' + key, parent, this.changed[key], options);
+				}
+				parent.changed[relatedKey] = undefined;
+				parent.trigger('change:' + relatedKey, parent, this, options);
 			}
-			//parent.changed[ this._relatedKey ] = this;
-			parent.changed[this._relatedKey] = undefined;
-
-			parent.trigger('change:' + this._relatedKey, parent, this, options);
-			parent.trigger('change', parent, options);
 			if (this.collection) {
-				_$1.defer(function () {
-					parent._triggerParentChange(this, options);
-				}.bind(this));
+				parent._triggerParentChange(this, options);
 			} else {
+				parent.trigger('change', parent, options);
 				parent._triggerParentChange(options);
 			}
-		}
-	}, {
-		key: '_registerComputeValue',
-		value: function _registerComputeValue(compute, attr) {
-			_$1.each(compute.deps, function (depAttr) {
-				this.on('change:' + depAttr, function (model, value, options) {
-					var value = model.get(depAttr);
-					if (value instanceof Model || isCollection(value)) {
-						model.changed[attr] = undefined;
-						_$1.each(value.changed, function (subValue, subAttr) {
-							model.changed[subAttr] = subValue;
-							model.trigger('change:' + attr + '.' + subAttr, model, subValue, options);
-						});
-					} else {
-						model.changed[attr] = value;
-					}
-					model.trigger('change:' + attr, model, value, options);
-					model.trigger('change', model, options);
-				});
-			}, this);
 		}
 	}, {
 		key: 'defaults',
@@ -1279,6 +1393,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	return Model;
 }(), _class2.idAttribute = 'id', _class2.relations = {}, _class2.computes = {}, _class2.defaults = {}, _temp)) || _class) || _class);
 function isCollection(instance) {
+	return instance instanceof Model$1.Collection;
 	return (typeof instance === 'undefined' ? 'undefined' : _typeof(instance)) === 'object' && instance[COLLECTION] === true;
 }
 
@@ -1301,7 +1416,7 @@ var _class$1;
 var _class2$1;
 var _temp$1;
 
-var _$5 = require('underscore');
+var _$4 = require('underscore');
 
 var _slice = Array.prototype.slice;
 var setOptions = { add: true, remove: true, merge: true };
@@ -1359,6 +1474,13 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	findLastIndex: 3
 }), events(_class$1 = _dec$1(_class$1 = (_temp$1 = _class2$1 = function () {
 	createClass(Collection, null, [{
+		key: 'of',
+		value: function of(model, protos, statics) {
+			return this.extend(protos, _extends({
+				model: model
+			}, statics));
+		}
+	}, {
 		key: 'extend',
 		value: function extend(prototypes, statics) {
 			var C = function (_ref) {
@@ -1372,8 +1494,8 @@ var Collection$1 = (_dec$1 = mixins('models', {
 				return C;
 			}(this);
 
-			Object.assign(C, statics, _$5.pick(prototypes, 'model'));
-			Object.assign(C.prototype, _$5.omit(prototypes, 'model'));
+			Object.assign(C, statics, _$4.pick(prototypes, 'model'));
+			Object.assign(C.prototype, _$4.omit(prototypes, 'model'));
 			return C;
 		}
 	}]);
@@ -1387,10 +1509,10 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		if (options.model) Object.defineProperty(this, 'model', { value: options.model });
 		if (options.comparator !== void 0) this.comparator = options.comparator;
 		this._reset();
-		Object.assign(this, _$5.pick(options, '_parent', '_relatedKey'));
+		Object.assign(this, _$4.pick(options, '_parent', '_relatedKey'));
 		this.initialize.call(this, models, options);
 		if (models) this.reset(models, Object.assign({ silent: true }, options));
-		this.on('update sort reset', this._triggerParentChange);
+		this.on('update reset sort', this._triggerParentChange);
 	}
 
 	createClass(Collection, [{
@@ -1415,7 +1537,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'toCompactJSON',
 		value: function toCompactJSON() {
-			var models = _$5(this.models).map(function (model) {
+			var models = _$4(this.models).map(function (model) {
 				return model instanceof Model$1 ? model.toCompactJSON() : model.toJSON();
 			});
 			return models;
@@ -1447,7 +1569,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		key: 'remove',
 		value: function remove(models, options) {
 			options = Object.assign({}, options);
-			var singular = !_$5.isArray(models);
+			var singular = !_$4.isArray(models);
 			models = singular ? [models] : models.slice();
 			var removed = this._removeModels(models, options);
 			if (!options.silent && removed.length) {
@@ -1476,7 +1598,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 				models = this.parse(models, options) || [];
 			}
 
-			var singular = !_$5.isArray(models);
+			var singular = !_$4.isArray(models);
 			models = singular ? [models] : models.slice();
 
 			var at = options.at;
@@ -1496,7 +1618,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 
 			var sort = false;
 			var sortable = this.comparator && at == null && options.sort != false;
-			var sortAttr = _$5.isString(this.comparator) ? this.comparator : null;
+			var sortAttr = _$4.isString(this.comparator) ? this.comparator : null;
 
 			// Turn bare objects into model references, and prevent invalid models
 			// from being added.
@@ -1547,7 +1669,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			var orderChanged = false;
 			var replace = !sortable && add && remove;
 			if (set$$1.length && replace) {
-				orderChanged = this.length != set$$1.length || _$5.some(this.models, function (m, index) {
+				orderChanged = this.length != set$$1.length || _$4.some(this.models, function (m, index) {
 					return m != set$$1[index];
 				});
 				this.models.length = 0;
@@ -1619,8 +1741,8 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'resetRelations',
 		value: function resetRelations(options) {
-			_$5.each(this.models, function (model) {
-				_$5.each(model.relations, function (rel, key) {
+			_$4.each(this.models, function (model) {
+				_$4.each(model.relations, function (rel, key) {
 					if (model.get(key) instanceof Collection) {
 						model.get(key).trigger('reset', model, options);
 					}
@@ -1721,10 +1843,10 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			options || (options = {});
 
 			var length = comparator.length;
-			if (_$5.isFunction(comparator)) comparator = _$5.bind(comparator, this);
+			if (_$4.isFunction(comparator)) comparator = _$4.bind(comparator, this);
 
 			// Run sort based on type of `comparator`.
-			if (length == 1 || _$5.isString(comparator)) {
+			if (length == 1 || _$4.isString(comparator)) {
 				this.models = this.sortBy(comparator);
 			} else {
 				this.models.sort(comparator);
@@ -1770,7 +1892,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'create',
 		value: function create(model, options) {
-			options = options ? _$5.clone(options) : {};
+			options = options ? _$4.clone(options) : {};
 			var wait = options.wait;
 			model = this._prepareModel(model, options);
 			if (!model) return false;
@@ -1826,7 +1948,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		key: '_prepareModel',
 		value: function _prepareModel(attrs, options) {
 			if (attrs instanceof Model$1) return attrs;
-			options = options ? _$5.clone(options) : {};
+			options = options ? _$4.clone(options) : {};
 			options.collection = this;
 
 			var modelClass = this.model;
@@ -1945,7 +2067,6 @@ var Collection$1 = (_dec$1 = mixins('models', {
 
 			// If this change event is triggered by one of its child model
 			if (model && model.collection) {
-				var modelIndex = model.collection.indexOf(model);
 				var modelID = model.id;
 
 				parent.changed = {};
@@ -1953,16 +2074,27 @@ var Collection$1 = (_dec$1 = mixins('models', {
 
 				// Loop through every changed attributes of this model
 				for (var key in model.changed) {
-					if (!_$5.isUndefined(modelID)) {
-						// Trigger "change:collection.id.child"
-						parent.changed[this._relatedKey + '#' + modelID + '.' + key] = model.changed[key];
-						parent.trigger('change:' + this._relatedKey + '#' + modelID + '.' + key, parent, model.changed[key], options);
-
-						// Trigger "change:collection.child"
-						parent.changed[this._relatedKey + '#' + modelID] = model.changed[key];
-						parent.trigger('change:' + this._relatedKey + '#' + modelID, parent, model.changed[key], options);
-					}
-
+					// if (!_.isUndefined(modelID)) {
+					// 	// Trigger "change:collection.id.child"
+					// 	parent.changed[`${this._relatedKey}.${modelID}.${key}`] =
+					// 		model.changed[key]
+					// 	parent.trigger(
+					// 		`change:${this._relatedKey}.${modelID}.${key}`,
+					// 		parent,
+					// 		model.changed[key],
+					// 		options
+					// 	)
+					//
+					// 	// Trigger "change:collection.child"
+					// 	parent.changed[`${this._relatedKey}.${modelID}`] =
+					// 		model.changed[key]
+					// 	parent.trigger(
+					// 		`change:${this._relatedKey}.${modelID}`,
+					// 		parent,
+					// 		model.changed[key],
+					// 		options
+					// 	)
+					// }
 					// Trigger "change:collection.child"
 					parent.changed[this._relatedKey + '.' + key] = model.changed[key];
 					parent.trigger('change:' + this._relatedKey + '.' + key, parent, model.changed[key], options);
@@ -1984,9 +2116,17 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		get: function get$$1() {
 			return this.constructor.model;
 		}
+	}, {
+		key: 'proxy',
+		get: function get$$1() {
+			return this;
+		}
 	}]);
 	return Collection;
 }(), _class2$1.model = Model$1, _temp$1)) || _class$1) || _class$1);
+Model$1.Collection = Collection$1;
+Collection$1[COLLECTION] = true;
+
 function splice(array, insert, at) {
 	at = Math.min(Math.max(at, 0), array.length);
 	var tail = Array(array.length - at);
@@ -2001,131 +2141,45 @@ function splice(array, insert, at) {
 	}
 }
 
-var _ = require('underscore');
-var _set = require('lodash/set');
-var _mapValues = require('lodash/mapValues');
-
-var localStorage$1 = global.localStorage;
-
-function Compute$1(deps, options) {
-	if (!(this instanceof Compute$1)) return new Compute$1(deps, options);
-	if (_.isArray(deps) && _.isFunction(options)) options = { deps: deps, get: options };else if (_.isFunction(deps)) options = _.defaults({ get: deps }, options);else options = deps || {};
-
-	_.defaults(this, options, {
-		deps: [],
-		init: function init() {
-			return null;
-		},
-		get: function get$$1(value) {
-			return value;
-		},
-		set: function set$$1(value) {
-			return value;
-		}
-	});
-}
-
-function Observable(attrs) {
-	var map = function map(obj) {
-		return _.mapObject(obj, function (value, key) {
-			if (Object.getPrototypeOf(value) === Object.prototype) {
-				return Model(map(value));
-			}
-			if (_.isFunction(value)) {
-				return Compute$1(value);
-			}
-			return value;
-		});
-	};
-	var model = Model(map(attrs));
-	return new model({}).getProxy();
-}
-
 function Model() {
-	var attrs = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	if (!(this instanceof Model)) {
-		if (isPrototypeOf(attrs, Model)) return attrs.create.apply(attrs, _(arguments).slice(1));
-		return Model.create.apply(Model, arguments);
+	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+		args[_key] = arguments[_key];
 	}
-	Model$1.apply(this, arguments);
-	// _.each(this.relations, function(ownerClass, attr) {
-	// this.setRelation(attr, this.attributes[attr], { _parent: this })
-	// }, this);
+
+	if (!(this instanceof Model)) {
+		return Model$1.define.apply(Model$1, args);
+	}
+	return new (Function.prototype.bind.apply(Model$1, [null].concat(args)))();
 }
 
 Object.setPrototypeOf(Model.prototype, Model$1.prototype);
+Model.isValid = function (instance) {
+	return instance instanceof Model$1;
+};
+Model.define = Model$1.define.bind(Model$1);
+Model.create = Model$1.create.bind(Model$1);
+Model.extend = Model$1.extend.bind(Model$1);
+Model.watch = Model$1.watch.bind(Model$1);
 
-// statics
-Object.assign(Model, _extends({}, _.pick(Model$1, 'extend', 'idAttribute', 'defaults', 'relations', 'computes'), {
-	create: function create(attrs) {
-		var protos = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-		var defaults$$1 = Object.assign({}, this.defaults, protos.defaults, attrs);
-		var relations = Object.assign({}, this.relations, protos.relations);
-		var computes = Object.assign({}, this.computes, protos.computes);
-		_.each(attrs, function (value, attr) {
-			if (isPrototypeOf(value, Model$1)) {
-				relations[attr] = value;
-				defaults$$1[attr] = {};
-			} else if (isPrototypeOf(value, Collection$1)) {
-				relations[attr] = value;
-				defaults$$1[attr] = [];
-			} else if (attrs[attr] instanceof Compute$1) {
-				computes[attr] = attrs[attr];
-				delete defaults$$1[attr];
-			}
-		});
-		return this.extend(protos, {
-			defaults: defaults$$1,
-			relations: relations,
-			computes: computes
-		});
+function Collection() {
+	for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+		args[_key2] = arguments[_key2];
 	}
-}));
 
-function Collection(models, options) {
 	if (!(this instanceof Collection)) {
-		if (isPrototypeOf(models, Collection)) return models.create.apply(models, _(arguments).slice(1));
-		return Collection.create.apply(Collection, arguments);
+		return Collection$1.of.apply(Collection$1, args);
 	}
-	Collection$1.apply(this, arguments);
+	return new (Function.prototype.bind.apply(Collection$1, [null].concat(args)))();
 }
 
 Object.setPrototypeOf(Collection.prototype, Collection$1.prototype);
+Collection.isValid = function (instance) {
+	return instance instanceof Collection$1;
+};
+Collection.of = Collection$1.of.bind(Collection$1);
+Collection.extend = Collection$1.extend.bind(Collection$1);
 
-// statics
-Object.assign(Collection, _extends({}, _.pick(Collection$1, 'model', 'extend'), {
-	create: function create(models, protos, statics) {
-		var Class = this.extend(protos, statics);
-		Class.model = models;
-		return Class;
-	}
-}));
-
-/* --- Utils --- */
-function isPrototypeOf(child, parent) {
-	if (!child || !parent) return false;
-	var result = false;
-	var proto = child.prototype;
-	while (proto) {
-		if (proto == parent.prototype) {
-			result = true;
-			break;
-		}
-		proto = proto.__proto__;
-	}
-	return result;
-}
-
-// const all = {
-// 	Model,
-// 	Collection,
-// 	Observable,
-// 	Compute
-// }
-
-// export default all
-
-exports.Compute = Compute$1;
-exports.Observable = Observable;
+exports._Model = Model$1;
+exports._Collection = Collection$1;
 exports.Model = Model;
 exports.Collection = Collection;

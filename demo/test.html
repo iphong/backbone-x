@@ -5,19 +5,43 @@
 	<title>Title</title>
 </head>
 <body>
-<script src="../dist/index.js" type="text/javascript"></script>
+<script src="../dist/umd.bundle.js" type="text/javascript"></script>
 <script>
-	const { _Model, Model, Collection } = backbonex
-	const Person = Model({
+	const {  Model, Collection } = BackboneX
+	const Member = Model({
 		name: Model({
 			first: 'phong',
 			last: 'vu'
 		})
 	})
-	const Group = Collection(Person)
-	const a = new Person
-	const b = new Group
-	a.on('all', e => console.log('event', e))
+	const Members = Collection(Member)
+	const Team = Model({
+		members: Members,
+		manager: Member
+	})
+	const a = (new Member).proxy
+	const b = (new Members).proxy
+	const c = (new Team({
+		members: [
+			{
+				id: 1,
+				name: {
+					first: 'phong',
+					last: 'vu'
+				}
+			},
+			{
+				id: 2,
+				name: {
+					first: 'thu',
+					last: 'dang'
+				}
+			}
+		]
+	}))
+	Model.watch(a, 'all', e => console.log('Member:', e))
+	Model.watch(b, 'all', e => console.log('Members:', e))
+	Model.watch(c, 'all', e => console.log('Team:', e))
 </script>
 </body>
 </html>

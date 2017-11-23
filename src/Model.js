@@ -5,15 +5,17 @@
  * -- ported by Phong Vu
  */
 import sync from '../lib/sync'
-import events from '../lib/events'
 import mixins from '../lib/mixins'
+import events from '../lib/events'
 import { MODEL, COLLECTION, OBSERVER } from '../lib/defs'
 
 const _ = require('underscore')
 const _set = require('lodash/set')
+const _get = require('lodash/get')
 const _mapValues = require('lodash/mapValues')
 const _cloneDeep = require('lodash/cloneDeep')
 
+const localStorage = global.localStorage
 const COPY = ['idAttribute', 'defaults', 'relations', 'computes']
 
 @events
@@ -33,31 +35,80 @@ export default class Model {
 	static computes = {}
 	static defaults = {}
 
-	attributes = {}
-	changed = {}
-
+	static create(props, options) {
+		const Class = this.define(props)
+		const model = new Class({}, options)
+		return model.proxy
+	}
+	static define(shape, protos = {}, statics = {}) {
+		switch (typeof shape) {
+			case 'object':
+				const defaults = { ...protos.defaults }
+				const computes = { ...protos.computes }
+				const relations = { ...protos.relations }
+				Object.getOwnPropertyNames(shape).forEach(key => {
+					const prop = Object.getOwnPropertyDescriptor(shape, key)
+					if (prop.value) {
+						switch (typeof prop.value) {
+							case 'function':
+								if (
+									prop.value.prototype instanceof Model ||
+									prop.value.prototype instanceof Model.Collection
+								) {
+									relations[key] = prop.value
+									defaults[key] = relations[key].defaults
+								}
+								break
+							case 'object':
+								if (!Array.isArray(prop.value)) {
+									relations[key] = Model.define(prop.value)
+									defaults[key] = relations[key].defaults
+									break
+								}
+							default:
+								defaults[key] = prop.value
+						}
+					} else if (prop.get || prop.set) {
+						computes[key] = _.pick(prop, 'get', 'set')
+					}
+				})
+				return this.extend(protos, {
+					defaults,
+					computes,
+					relations,
+					...statics
+				})
+			case 'function':
+				Object.setPrototypeOf(shape.prototype, this.prototype)
+				Object.assign(shape, _.pick(this, COPY))
+				return shape
+			default:
+				return this
+		}
+	}
 	static extend(prototypes, statics) {
 		class M extends this {}
 		Object.assign(M, statics, _.pick(prototypes, COPY))
 		Object.assign(M.prototype, _.omit(prototypes, COPY))
 		return M
 	}
-	static observer(proxy) {
-		return proxy ? proxy[OBSERVER] : void 0
-	}
 	static watch(proxy, ...args) {
-		const observer = this.observer(proxy)
+		const observer = proxy[OBSERVER]
 		if (observer) {
 			observer.on(...args)
 		}
 	}
 
 	constructor(...args) {
-		this[MODEL] = true
-		this[OBSERVER] = this
 		const [attrs = {}, options = {}] = args
 		this.cid = _.uniqueId(this.cidPrefix)
+		this.attributes = {}
 		this.proxy = this._createProxy()
+		this.changed = {}
+		Object.defineProperties(this, {
+			[MODEL]: { value: true },
+			[OBSERVER]: { value: this }
+		})
 		Object.assign(
 			this,
 			_.pick(options, 'collection', '_parent', '_relatedKey')
@@ -72,6 +123,7 @@ export default class Model {
 		const localStorageKey = options.localStorageKey
 		if (!_.isUndefined(localStorage)) {
 			if (!_.isUndefined(localStorageKey)) {
+				console.log('begin localStorage')
 				const storedData = localStorage.getItem(localStorageKey)
 				if (storedData) {
 					try {
@@ -150,10 +202,8 @@ export default class Model {
 		for (const key in attrs) {
 			attr = this.get(key)
 			if (_.isObject(attr)) {
-				if (attr instanceof Model) {
-					attr = (attr.$ || attr).toJSON()
-				} else if (typeof attr.toJSON === 'function') {
-					attr = attr.toJSON()
+				if (attr instanceof Model || attr instanceof Model.Collection) {
+					attr = (attr[OBSERVER] || attr).toJSON()
 				} else {
 					const proto = Object.getPrototypeOf(attr)
 					if (
@@ -184,7 +234,6 @@ export default class Model {
 				} else if (typeof attr.toJSON === 'function') {
 					attr = attr.toJSON()
 				}
-				if (attr instanceof Compute) continue
 				if (_.isEqual(attr, this.defaults[key])) continue
 
 				obj[key] = attr
@@ -195,19 +244,37 @@ export default class Model {
 
 	// Get the value of an attribute.
 	get(key) {
-		if (!(typeof key === 'string')) return void 0
+		if (typeof key !== 'string') return void 0
+		let match
 		let value = this
 		const regex = /(\w+)(?:#(\w+))?/g
-		let match
 		while ((match = regex.exec(key))) {
-			value =
-				value instanceof Model
-					? value.attributes[match[1]]
-					: typeof value === 'object' ? value[match[1]] : undefined
-			if (match[2])
-				value = isCollection(value)
-					? value.get(match[2])
-					: value[match[2]]
+			const [, m1, m2] = match
+			if (value === this) {
+				if (m1 in value.computes) {
+					value = _get(value.computes[m1], 'get')
+				} else {
+					value = _get(value.attributes, m1)
+				}
+				if (typeof value === 'function') {
+					value = value.call(this.proxy)
+				}
+			} else if (value instanceof Model) {
+				value = value.get(m1)
+			} else if (value instanceof Object) {
+				value = value[m1]
+			} else {
+				value = void 0
+			}
+			if (m2) {
+				if (isCollection(value)) {
+					value = value.at(m2)
+				} else if (value instanceof Object) {
+					value = value[m2]
+				} else {
+					value = void 0
+				}
+			}
 		}
 		return value
 	}
@@ -267,14 +334,17 @@ export default class Model {
 		// For each `set` attribute, update or delete the current value.
 		Object.keys(attrs).forEach(attr => {
 			let value = attrs[attr]
-			// if (this.computes[attr]) {
-			// 	value = this.computes[attr].set.call(this, value, options)
-			// } else {
-			//
-			// }
-			// Inject in the relational lookup
-			value = this.setRelation(attr, value, options)
-			if (!_.isUndefined(value)) {
+			if (attr in this.computes) {
+				value = _get(this.computes[attr], 'set')
+				if (typeof value === 'function') {
+					value = value.call(this.proxy, val)
+				} else {
+					value = void 0
+				}
+			} else {
+				value = this.setRelation(attr, value, options)
+			}
+			if (!_.isUndefined(value) && !_.isFunction(value)) {
 				if (current[attr] !== value) changes.push(attr)
 				if (prev[attr] !== value) {
 					this.changed[attr] = value
@@ -325,10 +395,10 @@ export default class Model {
 		if (this.relations && _.has(this.relations, attr)) {
 			// If the relation already exists, we don't want to replace it, rather
 			// update the data within it whether it is a collection or model
-			if (relation && isCollection(relation)) {
+			if (relation && relation instanceof Model.Collection) {
 				// If the value that is being set is already a collection, use the models
 				// within the collection.
-				if (isCollection(val) || val instanceof Array) {
+				if (val instanceof Model.Collection || val instanceof Array) {
 					val = val.models || val
 					modelsToAdd = _.clone(val)
 
@@ -610,8 +680,8 @@ export default class Model {
 		return false
 	}
 
-	_createProxy() {
-		return new Proxy(this.attributes, {
+	_createProxy(attrs = this.attributes) {
+		return new Proxy(attrs, {
 			has: (target, prop) => {
 				return this.has(prop)
 			},
@@ -653,81 +723,37 @@ export default class Model {
 	_triggerParentChange(options) {
 		const parent = this.collection || this._parent
 		if (!parent) return
+		const relatedKey = this._relatedKey || this.id
+		Object.assign({}, options, { chained: true })
 
 		parent.changed = {}
-		Object.assign(options, { chained: true })
 
-		// Loop through every changed attribute
-		for (const key in this.changed) {
-			// Trigger "change:this.attr"
-			parent.changed[`${this._relatedKey}.${key}`] = this.changed[key]
-			parent.trigger(
-				`change:${this._relatedKey}.${key}`,
-				parent,
-				this.changed[key],
-				options
-			)
+		if (relatedKey != null) {
+			// Loop through every changed attribute
+			for (const key in this.changed) {
+				parent.changed[`${relatedKey}.${key}`] = this.changed[key]
+				parent.trigger(
+					`change:${relatedKey}.${key}`,
+					parent,
+					this.changed[key],
+					options
+				)
+			}
+			parent.changed[relatedKey] = undefined
+			parent.trigger(`change:${relatedKey}`, parent, this, options)
 		}
-		//parent.changed[ this._relatedKey ] = this;
-		parent.changed[this._relatedKey] = undefined
-
-		parent.trigger(`change:${this._relatedKey}`, parent, this, options)
-		parent.trigger('change', parent, options)
 		if (this.collection) {
-			_.defer(
-				function() {
-					parent._triggerParentChange(this, options)
-				}.bind(this)
-			)
+			parent._triggerParentChange(this, options)
 		} else {
+			parent.trigger('change', parent, options)
 			parent._triggerParentChange(options)
 		}
-	}
-
-	_registerComputeValue(compute, attr) {
-		_.each(
-			compute.deps,
-			function(depAttr) {
-				this.on(`change:${depAttr}`, function(model, value, options) {
-					var value = model.get(depAttr)
-					if (value instanceof Model || isCollection(value)) {
-						model.changed[attr] = undefined
-						_.each(value.changed, function(subValue, subAttr) {
-							model.changed[subAttr] = subValue
-							model.trigger(
-								`change:${attr}.${subAttr}`,
-								model,
-								subValue,
-								options
-							)
-						})
-					} else {
-						model.changed[attr] = value
-					}
-					model.trigger(`change:${attr}`, model, value, options)
-					model.trigger('change', model, options)
-				})
-			},
-			this
-		)
 	}
 }
 
 function isCollection(instance) {
+	return instance instanceof Model.Collection
 	return typeof instance === 'object' && instance[COLLECTION] === true
-}
-
-function getComputedValue(model, key) {
-	if (model.computes && model.computes[key]) {
-		const compute = model.computes[key]
-		const deps = _(compute.deps).map(function(dep) {
-			return model.get(dep)
-		})
-		if (_.isFunction(compute.get)) {
-			return compute.get.apply(model, deps)
-		}
-	}
-	return model.attributes[key]
 }
 
 function setPrototypeOf(child, prototype) {

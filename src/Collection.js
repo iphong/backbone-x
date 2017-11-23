@@ -63,8 +63,14 @@ const addOptions = { add: true, remove: false }
 	findLastIndex: 3
 })
 export default class Collection {
-	static model = Model
+	static model = Model;
 
+	static of(model, protos, statics) {
+		return this.extend(protos, {
+			model,
+			...statics
+		})
+	}
 	static extend(prototypes, statics) {
 		class C extends this {}
 		Object.assign(C, statics, _.pick(prototypes, 'model'))
@@ -83,11 +89,15 @@ export default class Collection {
 		Object.assign(this, _.pick(options, '_parent', '_relatedKey'))
 		this.initialize.call(this, models, options)
 		if (models) this.reset(models, Object.assign({ silent: true }, options))
-		this.on('update sort reset', this._triggerParentChange)
+		this.on('update reset sort', this._triggerParentChange)
 	}
 
 	get model() {
 		return this.constructor.model
+	}
+
+	get proxy() {
+		return this
 	}
 
 	// The default model for a collection is just a **Backbone.Model**.
@@ -542,7 +552,6 @@ export default class Collection {
 
 		// If this change event is triggered by one of its child model
 		if (model && model.collection) {
-			const modelIndex = model.collection.indexOf(model)
 			const modelID = model.id
 
 			parent.changed = {}
@@ -550,28 +559,27 @@ export default class Collection {
 
 			// Loop through every changed attributes of this model
 			for (const key in model.changed) {
-				if (!_.isUndefined(modelID)) {
-					// Trigger "change:collection.id.child"
-					parent.changed[`${this._relatedKey}#${modelID}.${key}`] =
-						model.changed[key]
-					parent.trigger(
-						`change:${this._relatedKey}#${modelID}.${key}`,
-						parent,
-						model.changed[key],
-						options
-					)
-
-					// Trigger "change:collection.child"
-					parent.changed[`${this._relatedKey}#${modelID}`] =
-						model.changed[key]
-					parent.trigger(
-						`change:${this._relatedKey}#${modelID}`,
-						parent,
-						model.changed[key],
-						options
-					)
-				}
-
+				// if (!_.isUndefined(modelID)) {
+				// 	// Trigger "change:collection.id.child"
+				// 	parent.changed[`${this._relatedKey}.${modelID}.${key}`] =
+				// 		model.changed[key]
+				// 	parent.trigger(
+				// 		`change:${this._relatedKey}.${modelID}.${key}`,
+				// 		parent,
+				// 		model.changed[key],
+				// 		options
+				// 	)
+				//
+				// 	// Trigger "change:collection.child"
+				// 	parent.changed[`${this._relatedKey}.${modelID}`] =
+				// 		model.changed[key]
+				// 	parent.trigger(
+				// 		`change:${this._relatedKey}.${modelID}`,
+				// 		parent,
+				// 		model.changed[key],
+				// 		options
+				// 	)
+				// }
 				// Trigger "change:collection.child"
 				parent.changed[`${this._relatedKey}.${key}`] =
 					model.changed[key]
@@ -595,6 +603,9 @@ export default class Collection {
 		parent.trigger('change', parent, options)
 	}
 }
+
+Model.Collection = Collection
+Collection[COLLECTION] = true
 
 function splice(array, insert, at) {
 	at = Math.min(Math.max(at, 0), array.length)
