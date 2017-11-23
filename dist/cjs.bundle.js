@@ -2,6 +2,33 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+function ajax(options) {
+	var xhr = new XMLHttpRequest();
+	var error = options.error;
+	var success = options.success;
+	xhr.open(options.type, options.url, true);
+	if (options.contentType) {
+		xhr.setRequestHeader('Content-Type', options.contentType);
+	}
+	xhr.addEventListener('load', function (e) {
+		if (xhr.status === 200) {
+			var data = xhr.responseText;
+			if (options.dataType === 'json') {
+				try {
+					data = JSON.parse(data);
+				} catch (err) {
+					error(xhr, xhr.statusText, err);
+				}
+			}
+			success(data);
+		} else {
+			error(xhr, xhr.statusText);
+		}
+	});
+	xhr.send(options.data);
+	return xhr;
+}
+
 var _$1 = require('underscore');
 
 var methodMap = {
@@ -67,45 +94,18 @@ function sync(method, model, options) {
 	return xhr;
 }
 
-function ajax(options) {
-	var xhr = new XMLHttpRequest();
-	var error = options.error;
-	var success = options.success;
-	xhr.open(options.type, options.url, true);
-	if (options.contentType) {
-		xhr.setRequestHeader('Content-Type', options.contentType);
-	}
-	xhr.addEventListener('load', function (e) {
-		if (xhr.status === 200) {
-			var data = xhr.responseText;
-			if (options.dataType === 'json') {
-				try {
-					data = JSON.parse(data);
-				} catch (err) {
-					error(xhr, xhr.statusText, err);
-				}
-			}
-			success(data);
-		} else {
-			error(xhr, xhr.statusText);
-		}
-	});
-	xhr.send(options.data);
-	return xhr;
-}
-
 var _$2 = require('underscore');
 
 var slice = Array.prototype.slice;
 
-var mixins = function (attribute, methods) {
+function mixins(attribute, methods) {
 	return function (Class) {
 		_$2.each(methods, function (length, method) {
 			if (_$2[method]) Class.prototype[method] = addMethod(length, method, attribute);
 		});
 		return Class;
 	};
-};
+}
 
 function addMethod(length, method, attribute) {
 	switch (length) {
@@ -142,6 +142,7 @@ function cb(iteratee, instance) {
 	};
 	return iteratee;
 }
+
 function modelMatcher(attrs) {
 	var matcher = _$2.matches(attrs);
 	return function (model) {
@@ -193,20 +194,7 @@ var createClass = function () {
 
 
 
-var defineProperty = function (obj, key, value) {
-  if (key in obj) {
-    Object.defineProperty(obj, key, {
-      value: value,
-      enumerable: true,
-      configurable: true,
-      writable: true
-    });
-  } else {
-    obj[key] = value;
-  }
 
-  return obj;
-};
 
 var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
@@ -303,7 +291,8 @@ var slicedToArray = function () {
 var _$3 = require('underscore');
 
 var eventSplitter = /\s+/;
-var events = function (target) {
+
+function events(target) {
 	var output = void 0;
 	if (typeof target === 'function') {
 		output = target.prototype;
@@ -412,7 +401,7 @@ var events = function (target) {
 		}
 	});
 	return target;
-};
+}
 // Iterates over the standard `event, callback` (as well as the fancy multiple
 // space-separated events `"change blur", callback` and jQuery-style event
 // maps `{event: callback}`).
@@ -531,10 +520,10 @@ function onceMap(map, name, callback, offer) {
 // Handles triggering the appropriate event callbacks.
 function triggerApi(objEvents, name, callback, args) {
 	if (objEvents) {
-		var events = objEvents[name];
+		var _events = objEvents[name];
 		var allEvents = objEvents.all;
-		if (events && allEvents) allEvents = allEvents.slice();
-		if (events) triggerEvents(events, args);
+		if (_events && allEvents) allEvents = allEvents.slice();
+		if (_events) triggerEvents(_events, args);
 		if (allEvents) triggerEvents(allEvents, [name].concat(args));
 	}
 	return objEvents;
@@ -572,855 +561,33 @@ function triggerEvents(events, args) {
 			}return;
 	}
 }
-// Aliases for backwards compatibility.
 
-var MODEL = Symbol('Model');
 var OBSERVER = Symbol('Observer');
-var COLLECTION = Symbol('Collection');
 
-var _dec;
-var _class;
-var _class2;
-var _temp;
-
-/**
- * Backbone Model
- *
- * -- rewritten in ES6
- * -- ported by Phong Vu
- */
-var _ = require('underscore');
-var _set = require('lodash/set');
-var _get = require('lodash/get');
-var _mapValues = require('lodash/mapValues');
-var _cloneDeep = require('lodash/cloneDeep');
-
-var localStorage = global.localStorage;
-var COPY = ['idAttribute', 'defaults', 'relations', 'computes'];
-
-var Model$1 = (_dec = mixins('attributes', {
-	keys: 1,
-	values: 1,
-	pairs: 1,
-	invert: 1,
-	pick: 0,
-	omit: 0,
-	chain: 1,
-	isEmpty: 1
-}), events(_class = _dec(_class = (_temp = _class2 = function () {
-	createClass(Model, null, [{
-		key: 'create',
-		value: function create(props, options) {
-			var Class = this.define(props);
-			var model = new Class({}, options);
-			return model.proxy;
-		}
-	}, {
-		key: 'define',
-		value: function define(shape) {
-			var protos = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-			var statics = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-
-			switch (typeof shape === 'undefined' ? 'undefined' : _typeof(shape)) {
-				case 'object':
-					var defaults$$1 = _extends({}, protos.defaults);
-					var computes = _extends({}, protos.computes);
-					var relations = _extends({}, protos.relations);
-					Object.getOwnPropertyNames(shape).forEach(function (key) {
-						var prop = Object.getOwnPropertyDescriptor(shape, key);
-						if (prop.value) {
-							switch (_typeof(prop.value)) {
-								case 'function':
-									if (prop.value.prototype instanceof Model || prop.value.prototype instanceof Model.Collection) {
-										relations[key] = prop.value;
-										defaults$$1[key] = relations[key].defaults;
-									}
-									break;
-								case 'object':
-									if (!Array.isArray(prop.value)) {
-										relations[key] = Model.define(prop.value);
-										defaults$$1[key] = relations[key].defaults;
-										break;
-									}
-								default:
-									defaults$$1[key] = prop.value;
-							}
-						} else if (prop.get || prop.set) {
-							computes[key] = _.pick(prop, 'get', 'set');
-						}
-					});
-					return this.extend(protos, _extends({
-						defaults: defaults$$1,
-						computes: computes,
-						relations: relations
-					}, statics));
-				case 'function':
-					Object.setPrototypeOf(shape.prototype, this.prototype);
-					Object.assign(shape, _.pick(this, COPY));
-					return shape;
-				default:
-					return this;
-			}
-		}
-	}, {
-		key: 'extend',
-		value: function extend(prototypes, statics) {
-			var M = function (_ref) {
-				inherits(M, _ref);
-
-				function M() {
-					classCallCheck(this, M);
-					return possibleConstructorReturn(this, (M.__proto__ || Object.getPrototypeOf(M)).apply(this, arguments));
-				}
-
-				return M;
-			}(this);
-
-			Object.assign(M, statics, _.pick(prototypes, COPY));
-			Object.assign(M.prototype, _.omit(prototypes, COPY));
-			return M;
-		}
-	}, {
-		key: 'watch',
-		value: function watch(proxy) {
-			var observer = proxy[OBSERVER];
-			if (observer) {
-				for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-					args[_key - 1] = arguments[_key];
-				}
-
-				observer.on.apply(observer, args);
-			}
-		}
-	}]);
-
-	function Model() {
-		var _Object$definePropert,
-		    _this2 = this;
-
-		classCallCheck(this, Model);
-
-		for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-			args[_key2] = arguments[_key2];
-		}
-
-		var _args$ = args[0],
-		    attrs = _args$ === undefined ? {} : _args$,
-		    _args$2 = args[1],
-		    options = _args$2 === undefined ? {} : _args$2;
-
-		this.cid = _.uniqueId(this.cidPrefix);
-		this.attributes = {};
-		this.proxy = this._createProxy();
-		this.changed = {};
-		Object.defineProperties(this, (_Object$definePropert = {}, defineProperty(_Object$definePropert, MODEL, { value: true }), defineProperty(_Object$definePropert, OBSERVER, { value: this }), _Object$definePropert));
-		Object.assign(this, _.pick(options, 'collection', '_parent', '_relatedKey'));
-		this.set(Object.assign(_cloneDeep(_.result(this, 'defaults')) || {}, options.parse ? this.parse(attrs, options) : attrs), options);
-		var localStorageKey = options.localStorageKey;
-		if (!_.isUndefined(localStorage)) {
-			if (!_.isUndefined(localStorageKey)) {
-				console.log('begin localStorage');
-				var storedData = localStorage.getItem(localStorageKey);
-				if (storedData) {
-					try {
-						this.set(JSON.parse(storedData));
-					} catch (e) {
-						console.warn('Unable to restore from localStorage #(', localStorageKey, ')');
-					}
-				}
-				this.on('all', _.debounce(function () {
-					localStorage.setItem(localStorageKey, JSON.stringify(_this2.toJSON()));
-				}, 1000));
-			}
-		}
-		options.localStorageKey = void 0;
-		this.initialize.apply(this, args);
+function splice(array, insert, at) {
+	at = Math.min(Math.max(at, 0), array.length);
+	var tail = Array(array.length - at);
+	var length = insert.length;
+	var i = void 0;
+	for (i = 0; i < tail.length; i++) {
+		tail[i] = array[i + at];
+	}for (i = 0; i < length; i++) {
+		array[i + at] = insert[i];
+	}for (i = 0; i < tail.length; i++) {
+		array[i + length + at] = tail[i];
 	}
-
-	// *[Symbol.iterator]() {
-	// 	let i = 0
-	// 	const keys = Object.keys(this.attributes)
-	// 	while (i < keys.length) yield this.get(keys[i++])
-	// }
-
-	createClass(Model, [{
-		key: 'initialize',
-
-
-		// Initialize is an empty function by default. Override it with your own
-		// initialization logic.
-		value: function initialize() {}
-	}, {
-		key: 'subscribe',
-		value: function subscribe(events$$1, handler, context) {
-			var _this3 = this;
-
-			if (typeof events$$1 !== 'string') return;
-			if (typeof handler !== 'function') return;
-			var keys = events$$1.split(/\s/);
-			this.on('change', function () {
-				var changes = Object.keys(_this3.changed);
-				var matched = _.intersection(keys, changes).length;
-				if (matched) {
-					handler.call(context);
-				}
-			});
-		}
-
-		// Return a copy of the model's `attributes` object.
-
-	}, {
-		key: 'toJSON',
-		value: function toJSON() {
-			var attr = void 0;
-			var obj = {};
-			var attrs = Object.assign({}, this.attributes);
-			for (var key in attrs) {
-				attr = this.get(key);
-				if (_.isObject(attr)) {
-					if (attr instanceof Model || attr instanceof Model.Collection) {
-						attr = (attr[OBSERVER] || attr).toJSON();
-					} else {
-						var proto = Object.getPrototypeOf(attr);
-						if (proto === Array.prototype || proto === Object.prototype) {
-							attr = _.clone(attr);
-						} else {
-							attr = void 0;
-						}
-					}
-				}
-				if (!_.isUndefined(attr)) {
-					obj[key] = attr;
-				}
-			}
-			return obj;
-		}
-	}, {
-		key: 'toCompactJSON',
-		value: function toCompactJSON() {
-			var attr = void 0;
-			var obj = {};
-			for (var key in this.attributes) {
-				if (this.attributes.hasOwnProperty(key)) {
-					attr = this.attributes[key];
-					if (typeof attr.toCompactJSON === 'function') {
-						attr = attr.toCompactJSON();
-					} else if (typeof attr.toJSON === 'function') {
-						attr = attr.toJSON();
-					}
-					if (_.isEqual(attr, this.defaults[key])) continue;
-
-					obj[key] = attr;
-				}
-			}
-			return obj;
-		}
-
-		// Get the value of an attribute.
-
-	}, {
-		key: 'get',
-		value: function get$$1(key) {
-			if (typeof key !== 'string') return void 0;
-			var match = void 0;
-			var value = this;
-			var regex = /(\w+)(?:#(\w+))?/g;
-			while (match = regex.exec(key)) {
-				var _match = match,
-				    _match2 = slicedToArray(_match, 3),
-				    m1 = _match2[1],
-				    m2 = _match2[2];
-
-				if (value === this) {
-					if (m1 in value.computes) {
-						value = _get(value.computes[m1], 'get');
-					} else {
-						value = _get(value.attributes, m1);
-					}
-					if (typeof value === 'function') {
-						value = value.call(this.proxy);
-					}
-				} else if (value instanceof Model) {
-					value = value.get(m1);
-				} else if (value instanceof Object) {
-					value = value[m1];
-				} else {
-					value = void 0;
-				}
-				if (m2) {
-					if (isCollection(value)) {
-						value = value.at(m2);
-					} else if (value instanceof Object) {
-						value = value[m2];
-					} else {
-						value = void 0;
-					}
-				}
-			}
-			return value;
-		}
-
-		// Get the HTML-escaped value of an attribute.
-
-	}, {
-		key: 'escape',
-		value: function escape(attr) {
-			return _.escape(this.get(attr));
-		}
-
-		// Returns `true` if the attribute contains a value that is not null
-		// or undefined.
-
-	}, {
-		key: 'has',
-		value: function has(attr) {
-			return this.get(attr) != null;
-		}
-
-		// Special-cased proxy to underscore's `_.matches` method.
-
-	}, {
-		key: 'matches',
-		value: function matches(attrs) {
-			return !!_.iteratee(attrs, this)(this.attributes);
-		}
-
-		// Set a hash of model attributes on the object, firing `"change"`. This is
-		// the core primitive operation of a model, updating the data and notifying
-		// anyone who needs to know about the change in state. The heart of the beast.
-
-	}, {
-		key: 'set',
-		value: function set$$1(key, val, options) {
-			var _this4 = this;
-
-			var attrs = void 0,
-			    prev = void 0,
-			    current = void 0;
-			if (key == null) return this;
-
-			// Handle both `"key", value` and `{key: value}` -style arguments.
-			if ((typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
-				attrs = key;
-				options = val;
-			} else {
-				attrs = _set({}, key, val);
-			}
-
-			options || (options = {});
-
-			// Run validation.
-			if (!this._validate(attrs, options)) return false;
-
-			// Extract attributes and options.
-			var unset = options.unset;
-			var silent = options.silent;
-			var changes = [];
-			var changing = this._changing;
-			this._changing = true;
-
-			if (!changing) {
-				this._previousAttributes = _.clone(this.attributes);
-				this.changed = {};
-			}
-			current = this.attributes, prev = this._previousAttributes;
-
-			// Check for changes of `id`.
-			if (this.idAttribute in attrs) this.id = attrs[this.idAttribute];
-
-			// For each `set` attribute, update or delete the current value.
-			Object.keys(attrs).forEach(function (attr) {
-				var value = attrs[attr];
-				if (attr in _this4.computes) {
-					value = _get(_this4.computes[attr], 'set');
-					if (typeof value === 'function') {
-						value = value.call(_this4.proxy, val);
-					} else {
-						value = void 0;
-					}
-				} else {
-					value = _this4.setRelation(attr, value, options);
-				}
-				if (!_.isUndefined(value) && !_.isFunction(value)) {
-					if (current[attr] !== value) changes.push(attr);
-					if (prev[attr] !== value) {
-						_this4.changed[attr] = value;
-					} else {
-						delete _this4.changed[attr];
-					}
-					unset ? delete current[attr] : current[attr] = value;
-				}
-			});
-
-			// Trigger all relevant attribute changes.
-			if (!silent) {
-				if (changes.length) this._pending = true;
-				for (var i = 0, l = changes.length; i < l; i++) {
-					this.trigger('change:' + changes[i], this, current[changes[i]], options);
-				}
-			}
-
-			if (changing) return this;
-			if (!silent) {
-				while (this._pending) {
-					this._pending = false;
-					this.trigger('change', this, options);
-					this._triggerParentChange(options);
-				}
-			}
-			this._pending = false;
-			this._changing = false;
-			return this;
-		}
-		//
-		// Borrowed from "Backbone Nested Models" by "Bret Little"
-		//
-
-	}, {
-		key: 'setRelation',
-		value: function setRelation(attr, val, options) {
-			var relation = this.attributes[attr],
-			    id = this.idAttribute || 'id',
-			    modelToSet = void 0,
-			    modelsToAdd = [],
-			    modelsToRemove = [];
-
-			if (options.unset && relation) delete relation.parent;
-
-			if (this.relations && _.has(this.relations, attr)) {
-				// If the relation already exists, we don't want to replace it, rather
-				// update the data within it whether it is a collection or model
-				if (relation && relation instanceof Model.Collection) {
-					// If the value that is being set is already a collection, use the models
-					// within the collection.
-					if (val instanceof Model.Collection || val instanceof Array) {
-						val = val.models || val;
-						modelsToAdd = _.clone(val);
-
-						relation.each(function (model, i) {
-							// If the model does not have an "id" skip logic to detect if it already
-							// exists and simply add it to the collection
-							if (typeof model[id] === 'undefined') return;
-
-							// If the incoming model also exists within the existing collection,
-							// call set on that model. If it doesn't exist in the incoming array,
-							// then add it to a list that will be removed.
-							var rModel = _.find(val, function (_model) {
-								return _model[id] === model[id];
-							});
-
-							if (rModel) {
-								model.set(rModel.toJSON ? rModel.toJSON() : rModel);
-
-								// Remove the model from the incoming list because all remaining models
-								// will be added to the relation
-								modelsToAdd.splice(i, 1);
-							} else {
-								modelsToRemove.push(model);
-							}
-						});
-
-						_.each(modelsToRemove, function (model) {
-							relation.remove(model);
-						});
-
-						relation.add(modelsToAdd);
-					} else {
-						// The incoming val that is being set is not an array or collection, then it represents
-						// a single model.  Go through each of the models in the existing relation and remove
-						// all models that aren't the same as this one (by id). If it is the same, call set on that
-						// model.
-
-						relation.each(function (model) {
-							if (val[id] === model[id]) {
-								model.set(val);
-							} else {
-								relation.remove(model);
-							}
-						});
-					}
-
-					return relation;
-				}
-
-				if (val instanceof Model) {
-					val = val.toJSON();
-				}
-
-				if (relation && relation instanceof Model) {
-					relation.set(val);
-					return relation;
-				}
-
-				options._parent = this;
-				options._relatedKey = attr;
-
-				val = new this.relations[attr](val, options);
-				val.parent = this;
-			}
-
-			return val;
-		}
-
-		// Remove an attribute from the model, firing `"change"`. `unset` is a noop
-		// if the attribute doesn't exist.
-
-	}, {
-		key: 'unset',
-		value: function unset(attr, options) {
-			return this.set(attr, void 0, Object.assign({}, options, { unset: true }));
-		}
-
-		// Clear all attributes on the model, firing `"change"`.
-
-	}, {
-		key: 'clear',
-		value: function clear(options) {
-			var attrs = {};
-			for (var key in this.attributes) {
-				if (this.attributes[key] instanceof Model) this.attributes[key].clear(options);else if (isCollection(this.attributes[key])) this.attributes[key].invoke('clear', options), this.attributes[key].reset([]);else attrs[key] = void 0;
-			}
-			return this.set(attrs, Object.assign({}, options, { unset: true }));
-		}
-
-		// Determine if the model has changed since the last `"change"` event.
-		// If you specify an attribute name, determine if that attribute has changed.
-
-	}, {
-		key: 'hasChanged',
-		value: function hasChanged(attr) {
-			if (attr == null) return !_.isEmpty(this.changed);
-			return _.has(this.changed, attr);
-		}
-
-		// Return an object containing all the attributes that have changed, or
-		// false if there are no changed attributes. Useful for determining what
-		// parts of a view need to be updated and/or what attributes need to be
-		// persisted to the server. Unset attributes will be set to undefined.
-		// You can also pass an attributes object to diff against the model,
-		// determining if there *would be* a change.
-
-	}, {
-		key: 'changedAttributes',
-		value: function changedAttributes(diff) {
-			if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
-			var old = this._changing ? this._previousAttributes : this.attributes;
-			var changed = {};
-			for (var attr in diff) {
-				var val = diff[attr];
-				if (old[attr] === val) continue;
-				changed[attr] = val;
-			}
-			return _.size(changed) ? changed : false;
-		}
-
-		// Get the previous value of an attribute, recorded at the time the last
-		// `"change"` event was fired.
-
-	}, {
-		key: 'previous',
-		value: function previous(attr) {
-			if (attr == null || !this._previousAttributes) return null;
-			return this._previousAttributes[attr];
-		}
-
-		// Get all of the attributes of the model at the time of the previous
-		// `"change"` event.
-
-	}, {
-		key: 'previousAttributes',
-		value: function previousAttributes() {
-			return _.clone(this._previousAttributes);
-		}
-
-		// Fetch the model from the server, merging the response with the model's
-		// local attributes. Any changed attributes will trigger a "change" event.
-
-	}, {
-		key: 'fetch',
-		value: function fetch(options) {
-			options = Object.assign({ parse: true }, options);
-			var model = this;
-			var success = options.success;
-			options.success = function (resp) {
-				var serverAttrs = options.parse ? model.parse(resp, options) : resp;
-				if (!model.set(serverAttrs, options)) return false;
-				if (success) success.call(options.context, model, resp, options);
-				model.trigger('sync', model, resp, options);
-			};
-			wrapError(this, options);
-			return sync('read', this, options);
-		}
-
-		// Set a hash of model attributes, and sync the model to the server.
-		// If the server returns an attributes hash that differs, the model's
-		// state will be `set` again.
-
-	}, {
-		key: 'save',
-		value: function save(key, val, options) {
-			// Handle both `"key", value` and `{key: value}` -style arguments.
-			var attrs = void 0;
-			if (key == null || (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
-				attrs = key;
-				options = val;
-			} else {
-				(attrs = {})[key] = val;
-			}
-			options = Object.assign({ validate: true, parse: true }, options);
-			var wait = options.wait;
-			// If we're not waiting and attributes exist, save acts as
-			// `set(attr).save(null, opts)` with validation. Otherwise, check if
-			// the model will be valid when the attributes, if any, are set.
-			if (attrs && !wait) {
-				if (!this.set(attrs, options)) return false;
-			} else if (!this._validate(attrs, options)) {
-				return false;
-			}
-			// After a successful server-side save, the client is (optionally)
-			// updated with the server-side state.
-			var model = this;
-			var success = options.success;
-			var attributes = this.attributes;
-			options.success = function (resp) {
-				// Ensure attributes are restored during synchronous saves.
-				model.attributes = attributes;
-				var serverAttrs = options.parse ? model.parse(resp, options) : resp;
-				if (wait) serverAttrs = Object.assign({}, attrs, serverAttrs);
-				if (serverAttrs && !model.set(serverAttrs, options)) return false;
-				if (success) success.call(options.context, model, resp, options);
-				model.trigger('sync', model, resp, options);
-			};
-			wrapError(this, options);
-			// Set temporary attributes if `{wait: true}` to properly find new ids.
-			if (attrs && wait) this.attributes = Object.assign({}, attributes, attrs);
-			var method = this.isNew() ? 'create' : options.patch ? 'patch' : 'update';
-			if (method === 'patch' && !options.attrs) options.attrs = attrs;
-			var xhr = sync(method, this, options);
-			// Restore attributes.
-			this.attributes = attributes;
-			return xhr;
-		}
-
-		// Destroy this model on the server if it was already persisted.
-		// Optimistically removes the model from its collection, if it has one.
-		// If `wait: true` is passed, waits for the server to respond before removal.
-
-	}, {
-		key: 'destroy',
-		value: function destroy(options) {
-			options = options ? _.clone(options) : {};
-			var model = this;
-			var success = options.success;
-			var wait = options.wait;
-			var destroy = function destroy() {
-				model.stopListening();
-				model.trigger('destroy', model, model.collection, options);
-			};
-			options.success = function (resp) {
-				if (wait) destroy();
-				if (success) success.call(options.context, model, resp, options);
-				if (!model.isNew()) model.trigger('sync', model, resp, options);
-			};
-			var xhr = false;
-			if (this.isNew()) {
-				_.defer(options.success);
-			} else {
-				wrapError(this, options);
-				xhr = sync('delete', this, options);
-			}
-			if (!wait) destroy();
-			return xhr;
-		}
-
-		// Default URL for the model's representation on the server -- if you're
-		// using Backbone's restful methods, override this to change the endpoint
-		// that will be called.
-
-	}, {
-		key: 'url',
-		value: function url() {
-			var base = _.result(this, 'urlRoot') || _.result(this.collection, 'url') || urlError();
-			if (this.isNew()) return base;
-			var id = this.get(this.idAttribute);
-			return base.replace(/[^/]$/, '$&/') + encodeURIComponent(id);
-		}
-
-		// **parse** converts a response into the hash of attributes to be `set` on
-		// the model. The default implementation is just to pass the response along.
-
-	}, {
-		key: 'parse',
-		value: function parse(resp, options) {
-			return resp;
-		}
-
-		// Create a new model with identical attributes to this one.
-
-	}, {
-		key: 'clone',
-		value: function clone(options) {
-			return new this.constructor(this.toJSON());
-		}
-
-		// A model is new if it has never been saved to the server, and lacks an id.
-
-	}, {
-		key: 'isNew',
-		value: function isNew() {
-			return !this.has(this.idAttribute);
-		}
-
-		// Check if the model is currently in a valid state.
-
-	}, {
-		key: 'isValid',
-		value: function isValid(options) {
-			return this._validate({}, Object.assign({}, options, { validate: true }));
-		}
-
-		// Run validation against the next complete set of model attributes,
-		// returning `true` if all is well. Otherwise, fire an `"invalid"` event.
-
-	}, {
-		key: '_validate',
-		value: function _validate(attrs, options) {
-			if (!options.validate || !this.validate) return true;
-			attrs = Object.assign({}, this.attributes, attrs);
-			var error = this.validationError = this.validate(attrs, options) || null;
-			if (!error) return true;
-			this.trigger('invalid', this, error, Object.assign(options, { validationError: error }));
-			return false;
-		}
-	}, {
-		key: '_createProxy',
-		value: function _createProxy() {
-			var _this5 = this;
-
-			var attrs = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.attributes;
-
-			return new Proxy(attrs, {
-				has: function has(target, prop) {
-					return _this5.has(prop);
-				},
-				get: function get$$1(target, prop) {
-					switch (prop) {
-						case '$':
-						case '$model':
-						case OBSERVER:
-							return _this5;
-						default:
-							var result = _this5.get(prop);
-							if (result instanceof Model) return result.proxy;
-							return result;
-					}
-				},
-				set: function set$$1(target, prop, value) {
-					_this5.set(prop, value);
-					return true;
-				},
-				getPrototypeOf: function getPrototypeOf(target) {
-					return Object.getPrototypeOf(_this5);
-				},
-				setPrototypeOf: function setPrototypeOf(target, proto) {
-					return true;
-				},
-
-				deleteProperty: function deleteProperty(target, prop) {
-					_this5.unset(prop);
-					return true;
-				},
-				defineProperty: function defineProperty$$1(target, prop, descriptor) {
-					return true;
-				},
-				ownKeys: function ownKeys(target) {
-					return _this5.keys();
-				}
-			});
-		}
-	}, {
-		key: '_triggerParentChange',
-		value: function _triggerParentChange(options) {
-			var parent = this.collection || this._parent;
-			if (!parent) return;
-			var relatedKey = this._relatedKey || this.id;
-			Object.assign({}, options, { chained: true });
-
-			parent.changed = {};
-
-			if (relatedKey != null) {
-				// Loop through every changed attribute
-				for (var key in this.changed) {
-					parent.changed[relatedKey + '.' + key] = this.changed[key];
-					parent.trigger('change:' + relatedKey + '.' + key, parent, this.changed[key], options);
-				}
-				parent.changed[relatedKey] = undefined;
-				parent.trigger('change:' + relatedKey, parent, this, options);
-			}
-			if (this.collection) {
-				parent._triggerParentChange(this, options);
-			} else {
-				parent.trigger('change', parent, options);
-				parent._triggerParentChange(options);
-			}
-		}
-	}, {
-		key: 'defaults',
-		get: function get$$1() {
-			return this.constructor.defaults;
-		}
-	}, {
-		key: 'relations',
-		get: function get$$1() {
-			return this.constructor.relations;
-		}
-	}, {
-		key: 'computes',
-		get: function get$$1() {
-			return this.constructor.computes;
-		}
-	}, {
-		key: 'idAttribute',
-		get: function get$$1() {
-			return this.constructor.idAttribute;
-		}
-	}, {
-		key: 'cidPrefix',
-		get: function get$$1() {
-			return 'c';
-		}
-	}]);
-	return Model;
-}(), _class2.idAttribute = 'id', _class2.relations = {}, _class2.computes = {}, _class2.defaults = {}, _temp)) || _class) || _class);
-function isCollection(instance) {
-	return instance instanceof Model$1.Collection;
-	return (typeof instance === 'undefined' ? 'undefined' : _typeof(instance)) === 'object' && instance[COLLECTION] === true;
-}
-
-// Throw an error when a URL is needed, and none is supplied.
-function urlError() {
-	console.warn('A "url" property or function must be specified');
-}
-
-// Wrap an optional error callback with a fallback error event.
-function wrapError(model, options) {
-	var error = options.error;
-	options.error = function (resp) {
-		if (error) error.call(options.context, model, resp, options);
-		model.trigger('error', model, resp, options);
-	};
 }
 
 var _dec$1;
 var _class$1;
-var _class2$1;
-var _temp$1;
 
 var _$4 = require('underscore');
 
+var _extend = Object.assign;
 var _slice = Array.prototype.slice;
 var setOptions = { add: true, remove: true, merge: true };
 var addOptions = { add: true, remove: false };
+var copyOptions$1 = ['_parent', '_relatedKey', 'comparator'];
 
 var Collection$1 = (_dec$1 = mixins('models', {
 	forEach: 3,
@@ -1472,13 +639,13 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	indexBy: 3,
 	findIndex: 3,
 	findLastIndex: 3
-}), events(_class$1 = _dec$1(_class$1 = (_temp$1 = _class2$1 = function () {
+}), events(_class$1 = _dec$1(_class$1 = function () {
 	createClass(Collection, null, [{
-		key: 'of',
-		value: function of(model, protos, statics) {
-			return this.extend(protos, _extends({
-				model: model
-			}, statics));
+		key: 'define',
+		value: function define(model, prototypes, statics) {
+			var Class = this.extend(prototypes, statics);
+			Class.model = model;
+			return Class;
 		}
 	}, {
 		key: 'extend',
@@ -1498,20 +665,30 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			Object.assign(C.prototype, _$4.omit(prototypes, 'model'));
 			return C;
 		}
+	}, {
+		key: 'isValid',
+		value: function isValid(instance) {
+			return instance instanceof Collection;
+		}
+		// *[Symbol.iterator]() {
+		// 	let i = 0
+		// 	while (i < this.models.length) yield this.at(i++)
+		// }
+
 	}]);
 
-	function Collection(models, options) {
+	function Collection(models) {
+		var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 		classCallCheck(this, Collection);
 
-		this[COLLECTION] = true;
 		this[OBSERVER] = this;
-		options || (options = {});
-		if (options.model) Object.defineProperty(this, 'model', { value: options.model });
-		if (options.comparator !== void 0) this.comparator = options.comparator;
+		if (options.model) {
+			Object.defineProperty(this, 'model', { value: options.model });
+		}
+		_extend(this, _$4.pick(options, copyOptions$1));
 		this._reset();
-		Object.assign(this, _$4.pick(options, '_parent', '_relatedKey'));
 		this.initialize.call(this, models, options);
-		if (models) this.reset(models, Object.assign({ silent: true }, options));
+		if (models) this.reset(models, _extend({ silent: true }, options));
 		this.on('update reset sort', this._triggerParentChange);
 	}
 
@@ -1561,14 +738,14 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'add',
 		value: function add(models, options) {
-			return this.set(models, Object.assign({ merge: false }, options, addOptions));
+			return this.set(models, _extend({ merge: false }, options, addOptions));
 		}
 		// Remove a model, or a list of models from the set.
 
 	}, {
 		key: 'remove',
 		value: function remove(models, options) {
-			options = Object.assign({}, options);
+			options = _extend({}, options);
 			var singular = !_$4.isArray(models);
 			models = singular ? [models] : models.slice();
 			var removed = this._removeModels(models, options);
@@ -1593,7 +770,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		value: function set$$1(models, options) {
 			if (models == null) return;
 
-			options = Object.assign({}, setOptions, options);
+			options = _extend({}, setOptions, options);
 			if (options.parse && !this._isModel(models)) {
 				models = this.parse(models, options) || [];
 			}
@@ -1719,7 +896,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			}
 			options.previousModels = this.models;
 			this._reset();
-			this.add(models, Object.assign({ silent: true }, options));
+			this.add(models, _extend({ silent: true }, options));
 			if (!options.silent) {
 				this.trigger('reset', this, options);
 				this.resetRelations(options);
@@ -1733,7 +910,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		// 	}
 		// 	options.previousModels = this.models
 		// 	this._reset()
-		// 	models = this.add(models, Object.assign({ silent: true }, options))
+		// 	models = this.add(models, _extend({ silent: true }, options))
 		// 	if (!options.silent) this.trigger('reset', this, options)
 		// 	return models
 		// }
@@ -1755,7 +932,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'push',
 		value: function push(model, options) {
-			return this.add(model, Object.assign({ at: this.length }, options));
+			return this.add(model, _extend({ at: this.length }, options));
 		}
 		// Remove a model from the end of the collection.
 
@@ -1770,7 +947,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}, {
 		key: 'unshift',
 		value: function unshift(model, options) {
-			return this.add(model, Object.assign({ at: 0 }, options));
+			return this.add(model, _extend({ at: 0 }, options));
 		}
 		// Remove a model from the beginning of the collection.
 
@@ -1870,7 +1047,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		value: function fetch(options) {
 			var _this2 = this;
 
-			options = Object.assign({ parse: true }, options);
+			options = _extend({ parse: true }, options);
 			var success = options.success;
 			var error = options.error;
 			options.success = function (resp) {
@@ -2070,7 +1247,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 				var modelID = model.id;
 
 				parent.changed = {};
-				Object.assign(options, { chained: true });
+				_extend(options, { chained: true });
 
 				// Loop through every changed attributes of this model
 				for (var key in model.changed) {
@@ -2123,23 +1300,834 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		}
 	}]);
 	return Collection;
-}(), _class2$1.model = Model$1, _temp$1)) || _class$1) || _class$1);
-Model$1.Collection = Collection$1;
-Collection$1[COLLECTION] = true;
+}()) || _class$1) || _class$1);
 
-function splice(array, insert, at) {
-	at = Math.min(Math.max(at, 0), array.length);
-	var tail = Array(array.length - at);
-	var length = insert.length;
-	var i = void 0;
-	for (i = 0; i < tail.length; i++) {
-		tail[i] = array[i + at];
-	}for (i = 0; i < length; i++) {
-		array[i + at] = insert[i];
-	}for (i = 0; i < tail.length; i++) {
-		array[i + length + at] = tail[i];
+var _dec;
+var _class;
+var _class2;
+var _temp;
+
+/**
+ * Backbone Model
+ *
+ * -- rewritten in ES6
+ * -- ported by Phong Vu
+ */
+var _ = require('underscore');
+var _set = require('lodash/set');
+var _get = require('lodash/get');
+var _mapValues = require('lodash/mapValues');
+var _cloneDeep = require('lodash/cloneDeep');
+
+var _assign = Object.assign;
+
+var localStorage = global.localStorage;
+var copyOptions = ['collection', '_parent', '_relatedKey'];
+var copyProtos = ['idAttribute', 'defaults', 'relations', 'computes'];
+
+var Model$1 = (_dec = mixins('attributes', {
+	keys: 1,
+	values: 1,
+	pairs: 1,
+	invert: 1,
+	pick: 0,
+	omit: 0,
+	chain: 1,
+	isEmpty: 1
+}), events(_class = _dec(_class = (_temp = _class2 = function () {
+	createClass(Model, null, [{
+		key: 'create',
+		value: function create(props, options) {
+			var Class = this.define(props);
+			var model = new Class({}, options);
+			return model.proxy;
+		}
+	}, {
+		key: 'define',
+		value: function define(shape) {
+			var protos = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+			var statics = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+			switch (typeof shape === 'undefined' ? 'undefined' : _typeof(shape)) {
+				case 'object':
+					var defaults$$1 = _extends({}, protos.defaults);
+					var computes = _extends({}, protos.computes);
+					var relations = _extends({}, protos.relations);
+					Object.getOwnPropertyNames(shape).forEach(function (key) {
+						var prop = Object.getOwnPropertyDescriptor(shape, key);
+						if (prop.value) {
+							switch (_typeof(prop.value)) {
+								case 'function':
+									if (prop.value.prototype instanceof Model || prop.value.prototype instanceof Collection$1) {
+										relations[key] = prop.value;
+										defaults$$1[key] = relations[key].defaults;
+									}
+									break;
+								case 'object':
+									if (!Array.isArray(prop.value)) {
+										relations[key] = Model.define(prop.value);
+										defaults$$1[key] = relations[key].defaults;
+										break;
+									}
+								default:
+									defaults$$1[key] = prop.value;
+							}
+						} else if (prop.get || prop.set) {
+							computes[key] = _.pick(prop, 'get', 'set');
+						}
+					});
+					return this.extend(protos, _extends({
+						defaults: defaults$$1,
+						computes: computes,
+						relations: relations
+					}, statics));
+				default:
+					return this;
+			}
+		}
+	}, {
+		key: 'extend',
+		value: function extend(prototypes, statics) {
+			var M = function (_ref) {
+				inherits(M, _ref);
+
+				function M() {
+					classCallCheck(this, M);
+					return possibleConstructorReturn(this, (M.__proto__ || Object.getPrototypeOf(M)).apply(this, arguments));
+				}
+
+				return M;
+			}(this);
+
+			_assign(M, statics, _.pick(prototypes, copyProtos));
+			_assign(M.prototype, _.omit(prototypes, copyProtos));
+			return M;
+		}
+	}, {
+		key: 'watch',
+		value: function watch(proxy) {
+			var observer = proxy[OBSERVER];
+			if (observer) {
+				for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+					args[_key - 1] = arguments[_key];
+				}
+
+				observer.on.apply(observer, args);
+			}
+		}
+	}, {
+		key: 'isValid',
+		value: function isValid(instance) {
+			return instance instanceof Model;
+		}
+	}]);
+
+	function Model(attributes, options) {
+		classCallCheck(this, Model);
+
+		var attrs = attributes || {};
+		options || (options = {});
+		this.cid = _.uniqueId(this.cidPrefix);
+		this.attributes = {};
+		_assign(this, _.pick(options, copyOptions));
+		if (options.parse) attrs = this.parse(attrs, options) || {};
+		var defaults$$1 = _.result(this, 'defaults');
+		attrs = _.defaults(_assign({}, defaults$$1, attrs), defaults$$1);
+		this.set(attrs, options);
+		this.changed = {};
+		this._createProxy();
+		this._initLocalStorage(options);
+		this.initialize.call(this, attributes, options);
 	}
+
+	createClass(Model, [{
+		key: 'initialize',
+
+
+		// Initialize is an empty function by default. Override it with your own
+		// initialization logic.
+		value: function initialize() {}
+	}, {
+		key: 'subscribe',
+		value: function subscribe(events$$1, handler, context) {
+			var _this2 = this;
+
+			if (typeof events$$1 !== 'string') return;
+			if (typeof handler !== 'function') return;
+			var keys = events$$1.split(/\s/);
+			this.on('change', function () {
+				var changes = Object.keys(_this2.changed);
+				var matched = _.intersection(keys, changes).length;
+				if (matched) {
+					handler.call(context);
+				}
+			});
+		}
+
+		// Return a copy of the model's `attributes` object.
+
+	}, {
+		key: 'toJSON',
+		value: function toJSON() {
+			var attr = void 0;
+			var obj = {};
+			var attrs = _assign({}, this.attributes);
+			for (var key in attrs) {
+				attr = this.get(key);
+				if (_.isObject(attr)) {
+					if (attr instanceof Model || attr instanceof Collection$1) {
+						attr = (attr[OBSERVER] || attr).toJSON();
+					} else {
+						var proto = Object.getPrototypeOf(attr);
+						if (proto === Array.prototype || proto === Object.prototype) {
+							attr = _.clone(attr);
+						} else {
+							attr = void 0;
+						}
+					}
+				}
+				if (!_.isUndefined(attr)) {
+					obj[key] = attr;
+				}
+			}
+			return obj;
+		}
+	}, {
+		key: 'toCompactJSON',
+		value: function toCompactJSON() {
+			var attr = void 0;
+			var obj = {};
+			for (var key in this.attributes) {
+				if (this.attributes.hasOwnProperty(key)) {
+					attr = this.attributes[key];
+					if (typeof attr.toCompactJSON === 'function') {
+						attr = attr.toCompactJSON();
+					} else if (typeof attr.toJSON === 'function') {
+						attr = attr.toJSON();
+					}
+					if (_.isEqual(attr, this.defaults[key])) continue;
+
+					obj[key] = attr;
+				}
+			}
+			return obj;
+		}
+
+		// Get the value of an attribute.
+
+	}, {
+		key: 'get',
+		value: function get$$1(key) {
+			if (typeof key !== 'string') return void 0;
+			var match = void 0;
+			var value = this;
+			var regex = /(\w+)(?:#(\w+))?/g;
+			while (match = regex.exec(key)) {
+				var _match = match,
+				    _match2 = slicedToArray(_match, 3),
+				    m1 = _match2[1],
+				    m2 = _match2[2];
+
+				if (value === this) {
+					if (m1 in value.computes) {
+						value = _get(value.computes[m1], 'get');
+					} else {
+						value = _get(value.attributes, m1);
+					}
+					if (typeof value === 'function') {
+						value = value.call(this.proxy);
+					}
+				} else if (value instanceof Model) {
+					value = value.get(m1);
+				} else if (value instanceof Object) {
+					value = value[m1];
+				} else {
+					value = void 0;
+				}
+				if (m2) {
+					if (Collection$1.isValid(value)) {
+						value = value.at(m2);
+					} else if (value instanceof Object) {
+						value = value[m2];
+					} else {
+						value = void 0;
+					}
+				}
+			}
+			return value;
+		}
+
+		// Get the HTML-escaped value of an attribute.
+
+	}, {
+		key: 'escape',
+		value: function escape(attr) {
+			return _.escape(this.get(attr));
+		}
+
+		// Returns `true` if the attribute contains a value that is not null
+		// or undefined.
+
+	}, {
+		key: 'has',
+		value: function has(attr) {
+			return this.get(attr) != null;
+		}
+
+		// Special-cased proxy to underscore's `_.matches` method.
+
+	}, {
+		key: 'matches',
+		value: function matches(attrs) {
+			return !!_.iteratee(attrs, this)(this.attributes);
+		}
+
+		// Set a hash of model attributes on the object, firing `"change"`. This is
+		// the core primitive operation of a model, updating the data and notifying
+		// anyone who needs to know about the change in state. The heart of the beast.
+
+	}, {
+		key: 'set',
+		value: function set$$1(key, val, options) {
+			var _this3 = this;
+
+			var attrs = void 0,
+			    prev = void 0,
+			    current = void 0;
+			if (key == null) return this;
+
+			// Handle both `"key", value` and `{key: value}` -style arguments.
+			if ((typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+				attrs = key;
+				options = val;
+			} else {
+				attrs = _set({}, key, val);
+			}
+
+			options || (options = {});
+
+			// Run validation.
+			if (!this._validate(attrs, options)) return false;
+
+			// Extract attributes and options.
+			var unset = options.unset;
+			var silent = options.silent;
+			var changes = [];
+			var changing = this._changing;
+			this._changing = true;
+
+			if (!changing) {
+				this._previousAttributes = _.clone(this.attributes);
+				this.changed = {};
+			}
+			current = this.attributes, prev = this._previousAttributes;
+
+			// Check for changes of `id`.
+			if (this.idAttribute in attrs) this.id = attrs[this.idAttribute];
+
+			// For each `set` attribute, update or delete the current value.
+			Object.keys(attrs).forEach(function (attr) {
+				var value = attrs[attr];
+				if (attr in _this3.computes) {
+					value = _get(_this3.computes[attr], 'set');
+					if (typeof value === 'function') {
+						value = value.call(_this3.proxy, val);
+					} else {
+						value = void 0;
+					}
+				} else {
+					value = _this3.setRelation(attr, value, options);
+				}
+				if (!_.isUndefined(value) && !_.isFunction(value)) {
+					if (current[attr] !== value) changes.push(attr);
+					if (prev[attr] !== value) {
+						_this3.changed[attr] = value;
+					} else {
+						delete _this3.changed[attr];
+					}
+					unset ? delete current[attr] : current[attr] = value;
+				}
+			});
+
+			// Trigger all relevant attribute changes.
+			if (!silent) {
+				if (changes.length) this._pending = true;
+				for (var i = 0, l = changes.length; i < l; i++) {
+					this.trigger('change:' + changes[i], this, current[changes[i]], options);
+				}
+			}
+
+			if (changing) return this;
+			if (!silent) {
+				while (this._pending) {
+					this._pending = false;
+					this.trigger('change', this, options);
+					this._triggerParentChange(options);
+				}
+			}
+			this._pending = false;
+			this._changing = false;
+			return this;
+		}
+		//
+		// Borrowed from "Backbone Nested Models" by "Bret Little"
+		//
+
+	}, {
+		key: 'setRelation',
+		value: function setRelation(attr, val, options) {
+			var relation = this.attributes[attr],
+			    id = this.idAttribute || 'id',
+			    modelToSet = void 0,
+			    modelsToAdd = [],
+			    modelsToRemove = [];
+
+			if (options.unset && relation) delete relation.parent;
+
+			if (this.relations && _.has(this.relations, attr)) {
+				// If the relation already exists, we don't want to replace it, rather
+				// update the data within it whether it is a collection or model
+				if (relation && relation instanceof Collection$1) {
+					// If the value that is being set is already a collection, use the models
+					// within the collection.
+					if (val instanceof Collection$1 || val instanceof Array) {
+						val = val.models || val;
+						modelsToAdd = _.clone(val);
+
+						relation.each(function (model, i) {
+							// If the model does not have an "id" skip logic to detect if it already
+							// exists and simply add it to the collection
+							if (typeof model[id] === 'undefined') return;
+
+							// If the incoming model also exists within the existing collection,
+							// call set on that model. If it doesn't exist in the incoming array,
+							// then add it to a list that will be removed.
+							var rModel = _.find(val, function (_model) {
+								return _model[id] === model[id];
+							});
+
+							if (rModel) {
+								model.set(rModel.toJSON ? rModel.toJSON() : rModel);
+
+								// Remove the model from the incoming list because all remaining models
+								// will be added to the relation
+								modelsToAdd.splice(i, 1);
+							} else {
+								modelsToRemove.push(model);
+							}
+						});
+
+						_.each(modelsToRemove, function (model) {
+							relation.remove(model);
+						});
+
+						relation.add(modelsToAdd);
+					} else {
+						// The incoming val that is being set is not an array or collection, then it represents
+						// a single model.  Go through each of the models in the existing relation and remove
+						// all models that aren't the same as this one (by id). If it is the same, call set on that
+						// model.
+
+						relation.each(function (model) {
+							if (val[id] === model[id]) {
+								model.set(val);
+							} else {
+								relation.remove(model);
+							}
+						});
+					}
+
+					return relation;
+				}
+
+				if (val instanceof Model) {
+					val = val.toJSON();
+				}
+
+				if (relation && relation instanceof Model) {
+					relation.set(val);
+					return relation;
+				}
+
+				options._parent = this;
+				options._relatedKey = attr;
+
+				val = new this.relations[attr](val, options);
+				val.parent = this;
+			}
+
+			return val;
+		}
+
+		// Remove an attribute from the model, firing `"change"`. `unset` is a noop
+		// if the attribute doesn't exist.
+
+	}, {
+		key: 'unset',
+		value: function unset(attr, options) {
+			return this.set(attr, void 0, _assign({}, options, { unset: true }));
+		}
+
+		// Clear all attributes on the model, firing `"change"`.
+
+	}, {
+		key: 'clear',
+		value: function clear(options) {
+			var attrs = {};
+			for (var key in this.attributes) {
+				if (this.attributes[key] instanceof Model) this.attributes[key].clear(options);else if (Collection$1.isValid(this.attributes[key])) this.attributes[key].invoke('clear', options), this.attributes[key].reset([]);else attrs[key] = void 0;
+			}
+			return this.set(attrs, _assign({}, options, { unset: true }));
+		}
+
+		// Determine if the model has changed since the last `"change"` event.
+		// If you specify an attribute name, determine if that attribute has changed.
+
+	}, {
+		key: 'hasChanged',
+		value: function hasChanged(attr) {
+			if (attr == null) return !_.isEmpty(this.changed);
+			return _.has(this.changed, attr);
+		}
+
+		// Return an object containing all the attributes that have changed, or
+		// false if there are no changed attributes. Useful for determining what
+		// parts of a view need to be updated and/or what attributes need to be
+		// persisted to the server. Unset attributes will be set to undefined.
+		// You can also pass an attributes object to diff against the model,
+		// determining if there *would be* a change.
+
+	}, {
+		key: 'changedAttributes',
+		value: function changedAttributes(diff) {
+			if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
+			var old = this._changing ? this._previousAttributes : this.attributes;
+			var changed = {};
+			for (var attr in diff) {
+				var val = diff[attr];
+				if (old[attr] === val) continue;
+				changed[attr] = val;
+			}
+			return _.size(changed) ? changed : false;
+		}
+
+		// Get the previous value of an attribute, recorded at the time the last
+		// `"change"` event was fired.
+
+	}, {
+		key: 'previous',
+		value: function previous(attr) {
+			if (attr == null || !this._previousAttributes) return null;
+			return this._previousAttributes[attr];
+		}
+
+		// Get all of the attributes of the model at the time of the previous
+		// `"change"` event.
+
+	}, {
+		key: 'previousAttributes',
+		value: function previousAttributes() {
+			return _.clone(this._previousAttributes);
+		}
+
+		// Fetch the model from the server, merging the response with the model's
+		// local attributes. Any changed attributes will trigger a "change" event.
+
+	}, {
+		key: 'fetch',
+		value: function fetch(options) {
+			options = _assign({ parse: true }, options);
+			var model = this;
+			var success = options.success;
+			options.success = function (resp) {
+				var serverAttrs = options.parse ? model.parse(resp, options) : resp;
+				if (!model.set(serverAttrs, options)) return false;
+				if (success) success.call(options.context, model, resp, options);
+				model.trigger('sync', model, resp, options);
+			};
+			wrapError(this, options);
+			return sync('read', this, options);
+		}
+
+		// Set a hash of model attributes, and sync the model to the server.
+		// If the server returns an attributes hash that differs, the model's
+		// state will be `set` again.
+
+	}, {
+		key: 'save',
+		value: function save(key, val, options) {
+			// Handle both `"key", value` and `{key: value}` -style arguments.
+			var attrs = void 0;
+			if (key == null || (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+				attrs = key;
+				options = val;
+			} else {
+				(attrs = {})[key] = val;
+			}
+			options = _assign({ validate: true, parse: true }, options);
+			var wait = options.wait;
+			// If we're not waiting and attributes exist, save acts as
+			// `set(attr).save(null, opts)` with validation. Otherwise, check if
+			// the model will be valid when the attributes, if any, are set.
+			if (attrs && !wait) {
+				if (!this.set(attrs, options)) return false;
+			} else if (!this._validate(attrs, options)) {
+				return false;
+			}
+			// After a successful server-side save, the client is (optionally)
+			// updated with the server-side state.
+			var model = this;
+			var success = options.success;
+			var attributes = this.attributes;
+			options.success = function (resp) {
+				// Ensure attributes are restored during synchronous saves.
+				model.attributes = attributes;
+				var serverAttrs = options.parse ? model.parse(resp, options) : resp;
+				if (wait) serverAttrs = _assign({}, attrs, serverAttrs);
+				if (serverAttrs && !model.set(serverAttrs, options)) return false;
+				if (success) success.call(options.context, model, resp, options);
+				model.trigger('sync', model, resp, options);
+			};
+			wrapError(this, options);
+			// Set temporary attributes if `{wait: true}` to properly find new ids.
+			if (attrs && wait) this.attributes = _assign({}, attributes, attrs);
+			var method = this.isNew() ? 'create' : options.patch ? 'patch' : 'update';
+			if (method === 'patch' && !options.attrs) options.attrs = attrs;
+			var xhr = sync(method, this, options);
+			// Restore attributes.
+			this.attributes = attributes;
+			return xhr;
+		}
+
+		// Destroy this model on the server if it was already persisted.
+		// Optimistically removes the model from its collection, if it has one.
+		// If `wait: true` is passed, waits for the server to respond before removal.
+
+	}, {
+		key: 'destroy',
+		value: function destroy(options) {
+			options = options ? _.clone(options) : {};
+			var model = this;
+			var success = options.success;
+			var wait = options.wait;
+			var destroy = function destroy() {
+				model.stopListening();
+				model.trigger('destroy', model, model.collection, options);
+			};
+			options.success = function (resp) {
+				if (wait) destroy();
+				if (success) success.call(options.context, model, resp, options);
+				if (!model.isNew()) model.trigger('sync', model, resp, options);
+			};
+			var xhr = false;
+			if (this.isNew()) {
+				_.defer(options.success);
+			} else {
+				wrapError(this, options);
+				xhr = sync('delete', this, options);
+			}
+			if (!wait) destroy();
+			return xhr;
+		}
+
+		// Default URL for the model's representation on the server -- if you're
+		// using Backbone's restful methods, override this to change the endpoint
+		// that will be called.
+
+	}, {
+		key: 'url',
+		value: function url() {
+			var base = _.result(this, 'urlRoot') || _.result(this.collection, 'url') || urlError();
+			if (this.isNew()) return base;
+			var id = this.get(this.idAttribute);
+			return base.replace(/[^/]$/, '$&/') + encodeURIComponent(id);
+		}
+
+		// **parse** converts a response into the hash of attributes to be `set` on
+		// the model. The default implementation is just to pass the response along.
+
+	}, {
+		key: 'parse',
+		value: function parse(resp, options) {
+			return resp;
+		}
+
+		// Create a new model with identical attributes to this one.
+
+	}, {
+		key: 'clone',
+		value: function clone(options) {
+			return new this.constructor(this.toJSON());
+		}
+
+		// A model is new if it has never been saved to the server, and lacks an id.
+
+	}, {
+		key: 'isNew',
+		value: function isNew() {
+			return !this.has(this.idAttribute);
+		}
+
+		// Check if the model is currently in a valid state.
+
+	}, {
+		key: 'isValid',
+		value: function isValid(options) {
+			return this._validate({}, _assign({}, options, { validate: true }));
+		}
+
+		// Run validation against the next complete set of model attributes,
+		// returning `true` if all is well. Otherwise, fire an `"invalid"` event.
+
+	}, {
+		key: '_validate',
+		value: function _validate(attrs, options) {
+			if (!options.validate || !this.validate) return true;
+			attrs = _assign({}, this.attributes, attrs);
+			var error = this.validationError = this.validate(attrs, options) || null;
+			if (!error) return true;
+			this.trigger('invalid', this, error, _assign(options, { validationError: error }));
+			return false;
+		}
+	}, {
+		key: '_createProxy',
+		value: function _createProxy() {
+			var _this4 = this;
+
+			if (this.proxy) return;
+			this.proxy = new Proxy(this.attributes, {
+				has: function has(target, prop) {
+					return _this4.has(prop);
+				},
+				get: function get$$1(target, prop) {
+					switch (prop) {
+						case '$':
+						case '$model':
+						case OBSERVER:
+							return _this4;
+						default:
+							var result = _this4.get(prop);
+							if (result instanceof Model) return result.proxy;
+							return result;
+					}
+				},
+				set: function set$$1(target, prop, value) {
+					_this4.set(prop, value);
+					return true;
+				},
+				getPrototypeOf: function getPrototypeOf(target) {
+					return Object.getPrototypeOf(_this4);
+				},
+				setPrototypeOf: function setPrototypeOf(target, proto) {
+					return true;
+				},
+
+				deleteProperty: function deleteProperty(target, prop) {
+					_this4.unset(prop);
+					return true;
+				},
+				defineProperty: function defineProperty$$1(target, prop, descriptor) {
+					return true;
+				},
+				ownKeys: function ownKeys(target) {
+					return _this4.keys();
+				}
+			});
+		}
+	}, {
+		key: '_initLocalStorage',
+		value: function _initLocalStorage(options) {
+			var _this5 = this;
+
+			var localStorageKey = options.localStorageKey;
+			delete options.localStorageKey;
+			if (localStorage && localStorageKey) {
+				var storedData = localStorage.getItem(localStorageKey);
+				if (storedData) {
+					try {
+						this.set(JSON.parse(storedData));
+					} catch (e) {
+						console.warn('Unable to restore from localStorage #(', localStorageKey, ')');
+					}
+				}
+				this.on('all', _.debounce(function () {
+					localStorage.setItem(localStorageKey, JSON.stringify(_this5.toJSON()));
+				}, 1000));
+			}
+		}
+	}, {
+		key: '_triggerParentChange',
+		value: function _triggerParentChange(options) {
+			var parent = this.collection || this._parent;
+			if (!parent) return;
+			var relatedKey = this._relatedKey || this.id;
+			_assign({}, options, { chained: true });
+
+			parent.changed = {};
+
+			if (relatedKey != null) {
+				// Loop through every changed attribute
+				for (var key in this.changed) {
+					parent.changed[relatedKey + '.' + key] = this.changed[key];
+					parent.trigger('change:' + relatedKey + '.' + key, parent, this.changed[key], options);
+				}
+				parent.changed[relatedKey] = undefined;
+				parent.trigger('change:' + relatedKey, parent, this, options);
+			}
+			if (this.collection) {
+				parent._triggerParentChange(this, options);
+			} else {
+				parent.trigger('change', parent, options);
+				parent._triggerParentChange(options);
+			}
+		}
+	}, {
+		key: 'defaults',
+		get: function get$$1() {
+			return this.constructor.defaults;
+		}
+	}, {
+		key: 'relations',
+		get: function get$$1() {
+			return this.constructor.relations;
+		}
+	}, {
+		key: 'computes',
+		get: function get$$1() {
+			return this.constructor.computes;
+		}
+	}, {
+		key: 'idAttribute',
+		get: function get$$1() {
+			return this.constructor.idAttribute;
+		}
+	}]);
+	return Model;
+}(), _class2.cidPrefix = 'c', _class2.relations = {}, _class2.computes = {}, _class2.defaults = {}, _temp)) || _class) || _class);
+
+
+Collection$1.model = Model$1;
+
+// Throw an error when a URL is needed, and none is supplied.
+function urlError() {
+	console.warn('A "url" property or function must be specified');
 }
+
+// Wrap an optional error callback with a fallback error event.
+function wrapError(model, options) {
+	var error = options.error;
+	options.error = function (resp) {
+		if (error) error.call(options.context, model, resp, options);
+		model.trigger('error', model, resp, options);
+	};
+}
+
+var _functions = require('lodash/functions');
+
+var setPrototypeOf = Object.setPrototypeOf;
+
+var modelMethods = ['create', 'define', 'extend', 'watch', 'isValid'];
+var collectionMethods = ['define', 'extend', 'isValid'];
 
 function Model() {
 	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
@@ -2152,14 +2140,10 @@ function Model() {
 	return new (Function.prototype.bind.apply(Model$1, [null].concat(args)))();
 }
 
-Object.setPrototypeOf(Model.prototype, Model$1.prototype);
-Model.isValid = function (instance) {
-	return instance instanceof Model$1;
-};
-Model.define = Model$1.define.bind(Model$1);
-Model.create = Model$1.create.bind(Model$1);
-Model.extend = Model$1.extend.bind(Model$1);
-Model.watch = Model$1.watch.bind(Model$1);
+setPrototypeOf(Model.prototype, Model$1.prototype);
+modelMethods.forEach(function (name) {
+	Model[name] = Model$1[name].bind(Model$1);
+});
 
 function Collection() {
 	for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -2167,19 +2151,16 @@ function Collection() {
 	}
 
 	if (!(this instanceof Collection)) {
-		return Collection$1.of.apply(Collection$1, args);
+		return Collection$1.define.apply(Collection$1, args);
 	}
 	return new (Function.prototype.bind.apply(Collection$1, [null].concat(args)))();
 }
+setPrototypeOf(Collection.prototype, Collection$1.prototype);
+collectionMethods.forEach(function (name) {
+	Collection[name] = Collection$1[name].bind(Collection$1);
+});
 
-Object.setPrototypeOf(Collection.prototype, Collection$1.prototype);
-Collection.isValid = function (instance) {
-	return instance instanceof Collection$1;
-};
-Collection.of = Collection$1.of.bind(Collection$1);
-Collection.extend = Collection$1.extend.bind(Collection$1);
-
-exports._Model = Model$1;
-exports._Collection = Collection$1;
 exports.Model = Model;
 exports.Collection = Collection;
+exports._Model = Model$1;
+exports._Collection = Collection$1;

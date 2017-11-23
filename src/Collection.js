@@ -1,14 +1,17 @@
-import Model from './Model'
 import sync from '../lib/sync'
+import splice from '../lib/splice'
 import events from '../lib/events'
 import mixins from '../lib/mixins'
 import { MODEL, COLLECTION, OBSERVER } from '../lib/defs'
+import Model from './Model'
 
 const _ = require('underscore')
 
+const _extend = Object.assign
 const slice = Array.prototype.slice
 const setOptions = { add: true, remove: true, merge: true }
 const addOptions = { add: true, remove: false }
+const copyOptions = ['_parent', '_relatedKey', 'comparator']
 
 @events
 @mixins('models', {
@@ -62,14 +65,11 @@ const addOptions = { add: true, remove: false }
 	findIndex: 3,
 	findLastIndex: 3
 })
-export default class Collection {
-	static model = Model;
-
-	static of(model, protos, statics) {
-		return this.extend(protos, {
-			model,
-			...statics
-		})
+class Collection {
+	static define(model, prototypes, statics) {
+		const Class = this.extend(prototypes, statics)
+		Class.model = model
+		return Class
 	}
 	static extend(prototypes, statics) {
 		class C extends this {}
@@ -77,18 +77,23 @@ export default class Collection {
 		Object.assign(C.prototype, _.omit(prototypes, 'model'))
 		return C
 	}
+	static isValid(instance) {
+		return instance instanceof Collection
+	}
+	// *[Symbol.iterator]() {
+	// 	let i = 0
+	// 	while (i < this.models.length) yield this.at(i++)
+	// }
 
-	constructor(models, options) {
-		this[COLLECTION] = true
+	constructor(models, options = {}) {
 		this[OBSERVER] = this
-		options || (options = {})
-		if (options.model)
+		if (options.model) {
 			Object.defineProperty(this, 'model', { value: options.model })
-		if (options.comparator !== void 0) this.comparator = options.comparator
+		}
+		_extend(this, _.pick(options, copyOptions))
 		this._reset()
-		Object.assign(this, _.pick(options, '_parent', '_relatedKey'))
 		this.initialize.call(this, models, options)
-		if (models) this.reset(models, Object.assign({ silent: true }, options))
+		if (models) this.reset(models, _extend({ silent: true }, options))
 		this.on('update reset sort', this._triggerParentChange)
 	}
 
@@ -134,14 +139,11 @@ export default class Collection {
 	// Models or raw JavaScript objects to be converted to Models, or any
 	// combination of the two.
 	add(models, options) {
-		return this.set(
-			models,
-			Object.assign({ merge: false }, options, addOptions)
-		)
+		return this.set(models, _extend({ merge: false }, options, addOptions))
 	}
 	// Remove a model, or a list of models from the set.
 	remove(models, options) {
-		options = Object.assign({}, options)
+		options = _extend({}, options)
 		const singular = !_.isArray(models)
 		models = singular ? [models] : models.slice()
 		const removed = this._removeModels(models, options)
@@ -162,7 +164,7 @@ export default class Collection {
 	set(models, options) {
 		if (models == null) return
 
-		options = Object.assign({}, setOptions, options)
+		options = _extend({}, setOptions, options)
 		if (options.parse && !this._isModel(models)) {
 			models = this.parse(models, options) || []
 		}
@@ -286,7 +288,7 @@ export default class Collection {
 		}
 		options.previousModels = this.models
 		this._reset()
-		this.add(models, Object.assign({ silent: true }, options))
+		this.add(models, _extend({ silent: true }, options))
 		if (!options.silent) {
 			this.trigger('reset', this, options)
 			this.resetRelations(options)
@@ -300,7 +302,7 @@ export default class Collection {
 	// 	}
 	// 	options.previousModels = this.models
 	// 	this._reset()
-	// 	models = this.add(models, Object.assign({ silent: true }, options))
+	// 	models = this.add(models, _extend({ silent: true }, options))
 	// 	if (!options.silent) this.trigger('reset', this, options)
 	// 	return models
 	// }
@@ -317,7 +319,7 @@ export default class Collection {
 
 	// Add a model to the end of the collection.
 	push(model, options) {
-		return this.add(model, Object.assign({ at: this.length }, options))
+		return this.add(model, _extend({ at: this.length }, options))
 	}
 	// Remove a model from the end of the collection.
 	pop(options) {
@@ -326,7 +328,7 @@ export default class Collection {
 	}
 	// Add a model to the beginning of the collection.
 	unshift(model, options) {
-		return this.add(model, Object.assign({ at: 0 }, options))
+		return this.add(model, _extend({ at: 0 }, options))
 	}
 	// Remove a model from the beginning of the collection.
 	shift(options) {
@@ -395,7 +397,7 @@ export default class Collection {
 	// collection when they arrive. If `reset: true` is passed, the response
 	// data will be passed through the `reset` method instead of `set`.
 	fetch(options) {
-		options = Object.assign({ parse: true }, options)
+		options = _extend({ parse: true }, options)
 		const success = options.success
 		const error = options.error
 		options.success = resp => {
@@ -555,7 +557,7 @@ export default class Collection {
 			const modelID = model.id
 
 			parent.changed = {}
-			Object.assign(options, { chained: true })
+			_extend(options, { chained: true })
 
 			// Loop through every changed attributes of this model
 			for (const key in model.changed) {
@@ -604,15 +606,4 @@ export default class Collection {
 	}
 }
 
-Model.Collection = Collection
-Collection[COLLECTION] = true
-
-function splice(array, insert, at) {
-	at = Math.min(Math.max(at, 0), array.length)
-	const tail = Array(array.length - at)
-	const length = insert.length
-	let i
-	for (i = 0; i < tail.length; i++) tail[i] = array[i + at]
-	for (i = 0; i < length; i++) array[i + at] = insert[i]
-	for (i = 0; i < tail.length; i++) array[i + length + at] = tail[i]
-}
+export default Collection
