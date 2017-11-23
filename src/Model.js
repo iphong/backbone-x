@@ -300,7 +300,7 @@ export default class Model {
 	//
 	// Borrowed from "Backbone Nested Models" by "Bret Little"
 	//
-	setRelation(attr, value, options) {
+	setRelation(attr, val, options) {
 		let relation = this.attributes[attr],
 			id = this.idAttribute || 'id',
 			modelToSet,
