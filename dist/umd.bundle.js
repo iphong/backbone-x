@@ -96,7 +96,101 @@ function ajax(options) {
 	return xhr;
 }
 
-var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
+
+
+
+
+
+
+
+
+
+
+
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
+
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
+
+
+
+
+
+
+
+var _extends = Object.assign || function (target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+
+    for (var key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    }
+  }
+
+  return target;
+};
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
+};
 
 var _$3 = require('underscore');
 
@@ -105,7 +199,7 @@ var events = function (target) {
 	var output = void 0;
 	if (typeof target === 'function') {
 		output = target.prototype;
-	} else if ((typeof target === 'undefined' ? 'undefined' : _typeof$1(target)) === 'object') {
+	} else if ((typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object') {
 		output = target;
 	} else {
 		return target;
@@ -217,7 +311,7 @@ var events = function (target) {
 function eventsApi(iteratee, events, name, callback, opts) {
 	var i = 0,
 	    names = void 0;
-	if (name && (typeof name === 'undefined' ? 'undefined' : _typeof$1(name)) === 'object') {
+	if (name && (typeof name === 'undefined' ? 'undefined' : _typeof(name)) === 'object') {
 		// Handle event maps.
 		if (callback !== void 0 && 'context' in opts && opts.context === void 0) opts.context = callback;
 		for (names = Object.keys(name); i < names.length; i++) {
@@ -378,9 +472,10 @@ var slice = Array.prototype.slice;
 
 var mixins = function (attribute, methods) {
 	return function (Class) {
-		return _$4.each(methods, function (length, method) {
+		_$4.each(methods, function (length, method) {
 			if (_$4[method]) Class.prototype[method] = addMethod(length, method, attribute);
 		});
+		return Class;
 	};
 };
 
@@ -430,20 +525,10 @@ var MODEL = Symbol('Model');
 var OBSERVER = Symbol('Observer');
 var COLLECTION = Symbol('Collection');
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _dec;
 var _class;
 var _class2;
 var _temp;
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
  * Backbone Model
@@ -468,16 +553,15 @@ var Model$1 = (_dec = mixins('attributes', {
 	chain: 1,
 	isEmpty: 1
 }), events(_class = _dec(_class = (_temp = _class2 = function () {
-	_createClass(Model, null, [{
+	createClass(Model, null, [{
 		key: 'extend',
 		value: function extend(prototypes, statics) {
 			var M = function (_ref) {
-				_inherits(M, _ref);
+				inherits(M, _ref);
 
 				function M() {
-					_classCallCheck(this, M);
-
-					return _possibleConstructorReturn(this, (M.__proto__ || Object.getPrototypeOf(M)).apply(this, arguments));
+					classCallCheck(this, M);
+					return possibleConstructorReturn(this, (M.__proto__ || Object.getPrototypeOf(M)).apply(this, arguments));
 				}
 
 				return M;
@@ -509,8 +593,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	function Model() {
 		var _this2 = this;
 
-		_classCallCheck(this, Model);
-
+		classCallCheck(this, Model);
 		this.attributes = {};
 		this.changed = {};
 
@@ -556,7 +639,7 @@ var Model$1 = (_dec = mixins('attributes', {
 	// 	while (i < keys.length) yield this.get(keys[i++])
 	// }
 
-	_createClass(Model, [{
+	createClass(Model, [{
 		key: 'initialize',
 
 
@@ -636,14 +719,14 @@ var Model$1 = (_dec = mixins('attributes', {
 
 	}, {
 		key: 'get',
-		value: function get(key) {
+		value: function get$$1(key) {
 			if (!(typeof key === 'string')) return void 0;
 			var value = this;
 			var regex = /(\w+)(?:#(\w+))?/g;
 			var match = void 0;
 			while (match = regex.exec(key)) {
 				value = value instanceof Model ? value.attributes[match[1]] : (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' ? value[match[1]] : undefined;
-				if (match[2]) value = value instanceof Model.Collection ? value.get(match[2]) : value[match[2]];
+				if (match[2]) value = isCollection(value) ? value.get(match[2]) : value[match[2]];
 			}
 			return value;
 		}
@@ -679,7 +762,7 @@ var Model$1 = (_dec = mixins('attributes', {
 
 	}, {
 		key: 'set',
-		value: function set(key, val, options) {
+		value: function set$$1(key, val, options) {
 			var _this4 = this;
 
 			var attrs = void 0,
@@ -775,10 +858,10 @@ var Model$1 = (_dec = mixins('attributes', {
 			if (this.relations && _$1.has(this.relations, attr)) {
 				// If the relation already exists, we don't want to replace it, rather
 				// update the data within it whether it is a collection or model
-				if (relation && relation instanceof Model.Collection) {
+				if (relation && isCollection(relation)) {
 					// If the value that is being set is already a collection, use the models
 					// within the collection.
-					if (val instanceof Model.Collection || val instanceof Array) {
+					if (isCollection(val) || val instanceof Array) {
 						val = val.models || val;
 						modelsToAdd = _$1.clone(val);
 
@@ -863,7 +946,7 @@ var Model$1 = (_dec = mixins('attributes', {
 		value: function clear(options) {
 			var attrs = {};
 			for (var key in this.attributes) {
-				if (this.attributes[key] instanceof Model) this.attributes[key].clear(options);else if (this.attributes[key] instanceof Model.Collection) this.attributes[key].invoke('clear', options), this.attributes[key].reset([]);else attrs[key] = void 0;
+				if (this.attributes[key] instanceof Model) this.attributes[key].clear(options);else if (isCollection(this.attributes[key])) this.attributes[key].invoke('clear', options), this.attributes[key].reset([]);else attrs[key] = void 0;
 			}
 			return this.set(attrs, Object.assign({}, options, { unset: true }));
 		}
@@ -1086,7 +1169,7 @@ var Model$1 = (_dec = mixins('attributes', {
 				has: function has(target, prop) {
 					return _this5.has(prop);
 				},
-				get: function get(target, prop) {
+				get: function get$$1(target, prop) {
 					switch (prop) {
 						case '$':
 						case '$model':
@@ -1098,7 +1181,7 @@ var Model$1 = (_dec = mixins('attributes', {
 							return result;
 					}
 				},
-				set: function set(target, prop, value) {
+				set: function set$$1(target, prop, value) {
 					_this5.set(prop, value);
 					return true;
 				},
@@ -1113,7 +1196,7 @@ var Model$1 = (_dec = mixins('attributes', {
 					_this5.unset(prop);
 					return true;
 				},
-				defineProperty: function defineProperty(target, prop, descriptor) {
+				defineProperty: function defineProperty$$1(target, prop, descriptor) {
 					return true;
 				},
 				ownKeys: function ownKeys(target) {
@@ -1155,7 +1238,7 @@ var Model$1 = (_dec = mixins('attributes', {
 			_$1.each(compute.deps, function (depAttr) {
 				this.on('change:' + depAttr, function (model, value, options) {
 					var value = model.get(depAttr);
-					if (value instanceof Model || value instanceof Model.Collection) {
+					if (value instanceof Model || isCollection(value)) {
 						model.changed[attr] = undefined;
 						_$1.each(value.changed, function (subValue, subAttr) {
 							model.changed[subAttr] = subValue;
@@ -1171,33 +1254,36 @@ var Model$1 = (_dec = mixins('attributes', {
 		}
 	}, {
 		key: 'defaults',
-		get: function get() {
+		get: function get$$1() {
 			return this.constructor.defaults;
 		}
 	}, {
 		key: 'relations',
-		get: function get() {
+		get: function get$$1() {
 			return this.constructor.relations;
 		}
 	}, {
 		key: 'computes',
-		get: function get() {
+		get: function get$$1() {
 			return this.constructor.computes;
 		}
 	}, {
 		key: 'idAttribute',
-		get: function get() {
+		get: function get$$1() {
 			return this.constructor.idAttribute;
 		}
 	}, {
 		key: 'cidPrefix',
-		get: function get() {
+		get: function get$$1() {
 			return 'c';
 		}
 	}]);
-
 	return Model;
 }(), _class2.idAttribute = 'id', _class2.relations = {}, _class2.computes = {}, _class2.defaults = {}, _temp)) || _class) || _class);
+function isCollection(instance) {
+	return (typeof instance === 'undefined' ? 'undefined' : _typeof(instance)) === 'object' && instance[COLLECTION] === true;
+}
+
 // Throw an error when a URL is needed, and none is supplied.
 function urlError() {
 	console.warn('A "url" property or function must be specified');
@@ -1212,18 +1298,10 @@ function wrapError(model, options) {
 	};
 }
 
-var _createClass$1 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _dec$1;
 var _class$1;
 var _class2$1;
 var _temp$1;
-
-function _possibleConstructorReturn$1(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$1(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var _$5 = require('underscore');
 
@@ -1282,16 +1360,15 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	findIndex: 3,
 	findLastIndex: 3
 }), events(_class$1 = _dec$1(_class$1 = (_temp$1 = _class2$1 = function () {
-	_createClass$1(Collection, null, [{
+	createClass(Collection, null, [{
 		key: 'extend',
 		value: function extend(prototypes, statics) {
 			var C = function (_ref) {
-				_inherits$1(C, _ref);
+				inherits(C, _ref);
 
 				function C() {
-					_classCallCheck$1(this, C);
-
-					return _possibleConstructorReturn$1(this, (C.__proto__ || Object.getPrototypeOf(C)).apply(this, arguments));
+					classCallCheck(this, C);
+					return possibleConstructorReturn(this, (C.__proto__ || Object.getPrototypeOf(C)).apply(this, arguments));
 				}
 
 				return C;
@@ -1304,7 +1381,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 	}]);
 
 	function Collection(models, options) {
-		_classCallCheck$1(this, Collection);
+		classCallCheck(this, Collection);
 
 		this[COLLECTION] = true;
 		this[OBSERVER] = this;
@@ -1318,8 +1395,9 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		this.on('update sort reset', this._triggerParentChange);
 	}
 
-	_createClass$1(Collection, [{
+	createClass(Collection, [{
 		key: 'initialize',
+
 
 		// The default model for a collection is just a **Backbone.Model**.
 		// This should be overridden in most cases.
@@ -1392,7 +1470,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 
 	}, {
 		key: 'set',
-		value: function set(models, options) {
+		value: function set$$1(models, options) {
 			if (models == null) return;
 
 			options = Object.assign({}, setOptions, options);
@@ -1408,7 +1486,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			if (at > this.length) at = this.length;
 			if (at < 0) at += this.length + 1;
 
-			var set = [];
+			var set$$1 = [];
 			var toAdd = [];
 			var toMerge = [];
 			var toRemove = [];
@@ -1442,7 +1520,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 					}
 					if (!modelMap[existing.cid]) {
 						modelMap[existing.cid] = true;
-						set.push(existing);
+						set$$1.push(existing);
 					}
 					models[i] = existing;
 
@@ -1453,7 +1531,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 						toAdd.push(model);
 						this._addReference(model, options);
 						modelMap[model.cid] = true;
-						set.push(model);
+						set$$1.push(model);
 					}
 				}
 			}
@@ -1470,12 +1548,12 @@ var Collection$1 = (_dec$1 = mixins('models', {
 			// See if sorting is needed, update `length` and splice in new models.
 			var orderChanged = false;
 			var replace = !sortable && add && remove;
-			if (set.length && replace) {
-				orderChanged = this.length != set.length || _$5.some(this.models, function (m, index) {
-					return m != set[index];
+			if (set$$1.length && replace) {
+				orderChanged = this.length != set$$1.length || _$5.some(this.models, function (m, index) {
+					return m != set$$1[index];
 				});
 				this.models.length = 0;
-				splice(this.models, set, 0);
+				splice(this.models, set$$1, 0);
 				this.length = this.models.length;
 			} else if (toAdd.length) {
 				if (sortable) sort = true;
@@ -1598,7 +1676,7 @@ var Collection$1 = (_dec$1 = mixins('models', {
 
 	}, {
 		key: 'get',
-		value: function get(obj) {
+		value: function get$$1(obj) {
 			if (obj == null) return void 0;
 			return this._byId[obj] || this._byId[this.modelId(obj.attributes || obj)] || obj.cid && this._byId[obj.cid];
 		}
@@ -1905,15 +1983,12 @@ var Collection$1 = (_dec$1 = mixins('models', {
 		}
 	}, {
 		key: 'model',
-		get: function get() {
+		get: function get$$1() {
 			return this.constructor.model;
 		}
 	}]);
-
 	return Collection;
 }(), _class2$1.model = Model$1, _temp$1)) || _class$1) || _class$1);
-Model$1.Collection = Collection$1;
-
 function splice(array, insert, at) {
 	at = Math.min(Math.max(at, 0), array.length);
 	var tail = Array(array.length - at);
@@ -1927,8 +2002,6 @@ function splice(array, insert, at) {
 		array[i + length + at] = tail[i];
 	}
 }
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _ = require('underscore');
 var _set = require('lodash/set');
@@ -1945,10 +2018,10 @@ function Compute$1(deps, options) {
 		init: function init() {
 			return null;
 		},
-		get: function get(value) {
+		get: function get$$1(value) {
 			return value;
 		},
-		set: function set(value) {
+		set: function set$$1(value) {
 			return value;
 		}
 	});
@@ -1982,29 +2055,30 @@ function Model() {
 	// }, this);
 }
 
+console.log(Model$1);
 Object.setPrototypeOf(Model.prototype, Model$1.prototype);
 
 // statics
 Object.assign(Model, _extends({}, _.pick(Model$1, 'extend', 'idAttribute', 'defaults', 'relations', 'computes'), {
 	create: function create(attrs) {
 		var protos = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-		var defaults = Object.assign({}, this.defaults, protos.defaults, attrs);
+		var defaults$$1 = Object.assign({}, this.defaults, protos.defaults, attrs);
 		var relations = Object.assign({}, this.relations, protos.relations);
 		var computes = Object.assign({}, this.computes, protos.computes);
 		_.each(attrs, function (value, attr) {
 			if (isPrototypeOf(value, Model$1)) {
 				relations[attr] = value;
-				defaults[attr] = {};
+				defaults$$1[attr] = {};
 			} else if (isPrototypeOf(value, Collection$1)) {
 				relations[attr] = value;
-				defaults[attr] = [];
+				defaults$$1[attr] = [];
 			} else if (attrs[attr] instanceof Compute$1) {
 				computes[attr] = attrs[attr];
-				delete defaults[attr];
+				delete defaults$$1[attr];
 			}
 		});
 		return this.extend(protos, {
-			defaults: defaults,
+			defaults: defaults$$1,
 			relations: relations,
 			computes: computes
 		});

@@ -10,9 +10,7 @@ export default {
 	plugins: [
 		resolve(),
 		babel({
-			// plugins: ['external-helpers'],
-			// externalHelpers: true,
-			// runtimeHelpers: true,
+			plugins: ['external-helpers'],
 			exclude: 'node_modules/**' // only transpile our source code
 		})
 	]
