@@ -5,10 +5,6 @@ const _ = require('underscore')
 const _set = require('lodash/set')
 const _mapValues = require('lodash/mapValues')
 
-// const Backbone = require('backbone')
-// const _Model = Backbone.Model
-// const _Collection = Backbone.Collection
-
 const localStorage = global.localStorage
 
 export function Compute(deps, options) {
@@ -63,12 +59,12 @@ export function Model(attrs = {}, options = {}) {
 Object.setPrototypeOf(Model.prototype, _Model.prototype)
 
 // statics
-_.extend(Model, {
+Object.assign(Model, {
 	..._.pick(_Model, 'extend', 'idAttribute', 'defaults', 'relations', 'computes'),
 	create: function(attrs, protos = {}, statics = {}) {
-		const defaults = _.extend({}, this.defaults, protos.defaults, attrs)
-		const relations = _.extend({}, this.relations, protos.relations)
-		const computes = _.extend({}, this.computes, protos.computes)
+		const defaults = Object.assign({}, this.defaults, protos.defaults, attrs)
+		const relations = Object.assign({}, this.relations, protos.relations)
+		const computes = Object.assign({}, this.computes, protos.computes)
 		_.each(attrs, (value, attr) => {
 			if (isPrototypeOf(value, _Model)) {
 				relations[attr] = value
@@ -101,7 +97,7 @@ export function Collection(models, options) {
 Object.setPrototypeOf(Collection.prototype, _Collection.prototype)
 
 // statics
-_.extend(Collection, {
+Object.assign(Collection, {
 	..._.pick(_Collection, 'model', 'extend'),
 	create: function(models, protos, statics) {
 		const Class = this.extend(protos, statics)
@@ -125,11 +121,11 @@ function isPrototypeOf(child, parent) {
 	return result
 }
 
-const all = {
-	Model,
-	Collection,
-	Observable,
-	Compute
-}
+// const all = {
+// 	Model,
+// 	Collection,
+// 	Observable,
+// 	Compute
+// }
 
-export default all
+// export default all

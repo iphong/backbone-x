@@ -4,12 +4,15 @@ import babel from 'rollup-plugin-babel'
 export default {
 	input: './src/index.js',
 	output: {
-		file: './dist/index.js',
+		file: './dist/cjs.bundle.js',
 		format: 'cjs'
 	},
 	plugins: [
 		resolve(),
 		babel({
+			// plugins: ['external-helpers'],
+			// externalHelpers: true,
+			// runtimeHelpers: true,
 			exclude: 'node_modules/**' // only transpile our source code
 		})
 	]

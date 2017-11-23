@@ -1,10 +1,6 @@
 {
 	"plugins": [
-		"transform-decorators-legacy",
-		["transform-runtime", {
-			"polyfill": false,
-			"regenerator": true
-		}]
+		"transform-decorators-legacy"
 	],
 	"presets": [
 		[

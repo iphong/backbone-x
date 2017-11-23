@@ -7,8 +7,8 @@ module.exports = [
 		entry: './src/index.js',
 		output: {
 			path: path.resolve(__dirname, './dist'),
-			filename: 'index.js',
-			library: 'backbonex',
+			filename: 'umd.bundle.js',
+			library: 'BackboneX',
 			libraryTarget: 'umd'
 		},
 		module: {
@@ -19,9 +19,6 @@ module.exports = [
 					use: 'babel-loader?compact&cacheDirectory'
 				}
 			]
-		},
-		externals: {
-			jquery: 'jquery'
 		},
 		plugins: [
 			new webpack.optimize.UglifyJsPlugin({

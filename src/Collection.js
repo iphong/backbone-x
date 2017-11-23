@@ -1,8 +1,8 @@
 import Model from './Model'
-import Events from './Events'
 import sync from '../lib/sync'
-import extend from '../lib/extend'
-import addUnderscoreMethods from '../lib/addUnderscoreMethods'
+import events from '../lib/events'
+import mixins from '../lib/mixins'
+import { MODEL, COLLECTION, OBSERVER } from '../lib/defs'
 
 const _ = require('underscore')
 
@@ -10,24 +10,86 @@ const slice = Array.prototype.slice
 const setOptions = { add: true, remove: true, merge: true }
 const addOptions = { add: true, remove: false }
 
-@Events
+@events
+@mixins('models', {
+	forEach: 3,
+	each: 3,
+	map: 3,
+	collect: 3,
+	reduce: 0,
+	foldl: 0,
+	inject: 0,
+	reduceRight: 0,
+	foldr: 0,
+	find: 3,
+	detect: 3,
+	filter: 3,
+	select: 3,
+	reject: 3,
+	every: 3,
+	all: 3,
+	some: 3,
+	any: 3,
+	include: 3,
+	includes: 3,
+	contains: 3,
+	invoke: 0,
+	max: 3,
+	min: 3,
+	toArray: 1,
+	size: 1,
+	first: 3,
+	head: 3,
+	take: 3,
+	initial: 3,
+	rest: 3,
+	tail: 3,
+	drop: 3,
+	last: 3,
+	without: 0,
+	difference: 0,
+	indexOf: 3,
+	shuffle: 1,
+	lastIndexOf: 3,
+	isEmpty: 1,
+	chain: 1,
+	sample: 3,
+	partition: 3,
+	groupBy: 3,
+	countBy: 3,
+	sortBy: 3,
+	indexBy: 3,
+	findIndex: 3,
+	findLastIndex: 3
+})
 export default class Collection {
-	static extend = extend
 	static model = Model
 
+	static extend(prototypes, statics) {
+		class C extends this {}
+		Object.assign(C, statics, _.pick(prototypes, 'model'))
+		Object.assign(C.prototype, _.omit(prototypes, 'model'))
+		return C
+	}
+
 	constructor(models, options) {
+		this[COLLECTION] = true
+		this[OBSERVER] = this
 		options || (options = {})
-		if (options.model) Object.defineProperty(this, 'model', { value: options.model })
+		if (options.model)
+			Object.defineProperty(this, 'model', { value: options.model })
 		if (options.comparator !== void 0) this.comparator = options.comparator
 		this._reset()
-		_.extend(this, _.pick(options, '_parent', '_relatedKey'))
+		Object.assign(this, _.pick(options, '_parent', '_relatedKey'))
 		this.initialize.call(this, models, options)
-		if (models) this.reset(models, _.extend({ silent: true }, options))
+		if (models) this.reset(models, Object.assign({ silent: true }, options))
 		this.on('update sort reset', this._triggerParentChange)
 	}
+
 	get model() {
 		return this.constructor.model
 	}
+
 	// The default model for a collection is just a **Backbone.Model**.
 	// This should be overridden in most cases.
 	// Initialize is an empty function by default. Override it with your own
@@ -48,10 +110,10 @@ export default class Collection {
 		})
 		return models
 	}
-	subscribe(events, handler, context) {
-		if (typeof events !== 'string') return
+	subscribe(type, handler, context) {
+		if (typeof type !== 'string') return
 		if (typeof handler !== 'function') return
-		const keys = events.split(/\s/)
+		const keys = type.split(/\s/)
 		this.on('all', event => {
 			if (keys.includes(event)) {
 				handler.call(context)
@@ -62,11 +124,14 @@ export default class Collection {
 	// Models or raw JavaScript objects to be converted to Models, or any
 	// combination of the two.
 	add(models, options) {
-		return this.set(models, _.extend({ merge: false }, options, addOptions))
+		return this.set(
+			models,
+			Object.assign({ merge: false }, options, addOptions)
+		)
 	}
 	// Remove a model, or a list of models from the set.
 	remove(models, options) {
-		options = _.extend({}, options)
+		options = Object.assign({}, options)
 		const singular = !_.isArray(models)
 		models = singular ? [models] : models.slice()
 		const removed = this._removeModels(models, options)
@@ -87,7 +152,7 @@ export default class Collection {
 	set(models, options) {
 		if (models == null) return
 
-		options = _.extend({}, setOptions, options)
+		options = Object.assign({}, setOptions, options)
 		if (options.parse && !this._isModel(models)) {
 			models = this.parse(models, options) || []
 		}
@@ -111,8 +176,7 @@ export default class Collection {
 		const remove = options.remove
 
 		let sort = false
-		const sortable =
-			this.comparator && at == null && options.sort != false
+		const sortable = this.comparator && at == null && options.sort != false
 		const sortAttr = _.isString(this.comparator) ? this.comparator : null
 
 		// Turn bare objects into model references, and prevent invalid models
@@ -212,7 +276,7 @@ export default class Collection {
 		}
 		options.previousModels = this.models
 		this._reset()
-		this.add(models, _.extend({ silent: true }, options))
+		this.add(models, Object.assign({ silent: true }, options))
 		if (!options.silent) {
 			this.trigger('reset', this, options)
 			this.resetRelations(options)
@@ -226,7 +290,7 @@ export default class Collection {
 	// 	}
 	// 	options.previousModels = this.models
 	// 	this._reset()
-	// 	models = this.add(models, _.extend({ silent: true }, options))
+	// 	models = this.add(models, Object.assign({ silent: true }, options))
 	// 	if (!options.silent) this.trigger('reset', this, options)
 	// 	return models
 	// }
@@ -243,7 +307,7 @@ export default class Collection {
 
 	// Add a model to the end of the collection.
 	push(model, options) {
-		return this.add(model, _.extend({ at: this.length }, options))
+		return this.add(model, Object.assign({ at: this.length }, options))
 	}
 	// Remove a model from the end of the collection.
 	pop(options) {
@@ -252,7 +316,7 @@ export default class Collection {
 	}
 	// Add a model to the beginning of the collection.
 	unshift(model, options) {
-		return this.add(model, _.extend({ at: 0 }, options))
+		return this.add(model, Object.assign({ at: 0 }, options))
 	}
 	// Remove a model from the beginning of the collection.
 	shift(options) {
@@ -321,7 +385,7 @@ export default class Collection {
 	// collection when they arrive. If `reset: true` is passed, the response
 	// data will be passed through the `reset` method instead of `set`.
 	fetch(options) {
-		options = _.extend({ parse: true }, options)
+		options = Object.assign({ parse: true }, options)
 		const success = options.success
 		const error = options.error
 		options.success = resp => {
@@ -482,7 +546,7 @@ export default class Collection {
 			const modelID = model.id
 
 			parent.changed = {}
-			_.extend(options, { chained: true })
+			Object.assign(options, { chained: true })
 
 			// Loop through every changed attributes of this model
 			for (const key in model.changed) {
@@ -531,64 +595,6 @@ export default class Collection {
 		parent.trigger('change', parent, options)
 	}
 }
-
-Model.Collection = Collection
-
-addUnderscoreMethods(
-	Collection,
-	{
-		forEach: 3,
-		each: 3,
-		map: 3,
-		collect: 3,
-		reduce: 0,
-		foldl: 0,
-		inject: 0,
-		reduceRight: 0,
-		foldr: 0,
-		find: 3,
-		detect: 3,
-		filter: 3,
-		select: 3,
-		reject: 3,
-		every: 3,
-		all: 3,
-		some: 3,
-		any: 3,
-		include: 3,
-		includes: 3,
-		contains: 3,
-		invoke: 0,
-		max: 3,
-		min: 3,
-		toArray: 1,
-		size: 1,
-		first: 3,
-		head: 3,
-		take: 3,
-		initial: 3,
-		rest: 3,
-		tail: 3,
-		drop: 3,
-		last: 3,
-		without: 0,
-		difference: 0,
-		indexOf: 3,
-		shuffle: 1,
-		lastIndexOf: 3,
-		isEmpty: 1,
-		chain: 1,
-		sample: 3,
-		partition: 3,
-		groupBy: 3,
-		countBy: 3,
-		sortBy: 3,
-		indexBy: 3,
-		findIndex: 3,
-		findLastIndex: 3
-	},
-	'models'
-)
 
 function splice(array, insert, at) {
 	at = Math.min(Math.max(at, 0), array.length)

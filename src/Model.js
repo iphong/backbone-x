@@ -4,27 +4,44 @@
  * -- rewritten in ES6
  * -- ported by Phong Vu
  */
-import Events from './Events'
 import sync from '../lib/sync'
-import extend from '../lib/extend'
-import addUnderscoreMethods from '../lib/addUnderscoreMethods'
+import events from '../lib/events'
+import mixins from '../lib/mixins'
+import { MODEL, COLLECTION, OBSERVER } from '../lib/defs'
 
 const _ = require('underscore')
 const _set = require('lodash/set')
 const _mapValues = require('lodash/mapValues')
 const _cloneDeep = require('lodash/cloneDeep')
 
-const MODEL = Symbol.for('Model')
-const COLLECTION = Symbol.for('Collection')
-const OBSERVER = Symbol('Model')
+const COPY = ['idAttribute', 'defaults', 'relations', 'computes']
 
-@Events
+@events
+@mixins('attributes', {
+	keys: 1,
+	values: 1,
+	pairs: 1,
+	invert: 1,
+	pick: 0,
+	omit: 0,
+	chain: 1,
+	isEmpty: 1
+})
 export default class Model {
-	static extend = extend
 	static idAttribute = 'id'
 	static relations = {}
 	static computes = {}
 	static defaults = {}
+
+	attributes = {}
+	changed = {}
+
+	static extend(prototypes, statics) {
+		class M extends this {}
+		Object.assign(M, statics, _.pick(prototypes, COPY))
+		Object.assign(M.prototype, _.omit(prototypes, COPY))
+		return M
+	}
 	static observer(proxy) {
 		return proxy ? proxy[OBSERVER] : void 0
 	}
@@ -34,26 +51,24 @@ export default class Model {
 			observer.on(...args)
 		}
 	}
-	[OBSERVER] = this
 
 	constructor(...args) {
+		this[MODEL] = true
+		this[OBSERVER] = this
 		const [attrs = {}, options = {}] = args
 		this.cid = _.uniqueId(this.cidPrefix)
-		this.attributes = {}
+		this.proxy = this._createProxy()
 		Object.assign(
 			this,
 			_.pick(options, 'collection', '_parent', '_relatedKey')
 		)
 		this.set(
 			Object.assign(
-				{},
 				_cloneDeep(_.result(this, 'defaults')) || {},
 				options.parse ? this.parse(attrs, options) : attrs
 			),
 			options
 		)
-		this.changed = {}
-		this.proxy = this._createProxy()
 		const localStorageKey = options.localStorageKey
 		if (!_.isUndefined(localStorage)) {
 			if (!_.isUndefined(localStorageKey)) {
@@ -131,7 +146,7 @@ export default class Model {
 	toJSON() {
 		let attr
 		const obj = {}
-		const attrs = _.extend({}, this.attributes)
+		const attrs = Object.assign({}, this.attributes)
 		for (const key in attrs) {
 			attr = this.get(key)
 			if (_.isObject(attr)) {
@@ -180,8 +195,7 @@ export default class Model {
 
 	// Get the value of an attribute.
 	get(key) {
-		if (!(typeof key === 'string'))
-			return void 0
+		if (!(typeof key === 'string')) return void 0
 		let value = this
 		const regex = /(\w+)(?:#(\w+))?/g
 		let match
@@ -191,10 +205,9 @@ export default class Model {
 					? value.attributes[match[1]]
 					: typeof value === 'object' ? value[match[1]] : undefined
 			if (match[2])
-				value =
-					value instanceof Model.Collection
-						? value.get(match[2])
-						: value[match[2]]
+				value = isCollection(value)
+					? value.get(match[2])
+					: value[match[2]]
 		}
 		return value
 	}
@@ -312,10 +325,10 @@ export default class Model {
 		if (this.relations && _.has(this.relations, attr)) {
 			// If the relation already exists, we don't want to replace it, rather
 			// update the data within it whether it is a collection or model
-			if (relation && relation instanceof Model.Collection) {
+			if (relation && isCollection(relation)) {
 				// If the value that is being set is already a collection, use the models
 				// within the collection.
-				if (val instanceof Model.Collection || val instanceof Array) {
+				if (isCollection(val) || val instanceof Array) {
 					val = val.models || val
 					modelsToAdd = _.clone(val)
 
@@ -387,7 +400,11 @@ export default class Model {
 	// Remove an attribute from the model, firing `"change"`. `unset` is a noop
 	// if the attribute doesn't exist.
 	unset(attr, options) {
-		return this.set(attr, void 0, _.extend({}, options, { unset: true }))
+		return this.set(
+			attr,
+			void 0,
+			Object.assign({}, options, { unset: true })
+		)
 	}
 
 	// Clear all attributes on the model, firing `"change"`.
@@ -396,13 +413,13 @@ export default class Model {
 		for (const key in this.attributes) {
 			if (this.attributes[key] instanceof Model)
 				this.attributes[key].clear(options)
-			else if (this.attributes[key] instanceof Model.Collection)
+			else if (isCollection(this.attributes[key]))
 				this.attributes[key].invoke('clear', options), this.attributes[
 					key
 				].reset([])
 			else attrs[key] = void 0
 		}
-		return this.set(attrs, _.extend({}, options, { unset: true }))
+		return this.set(attrs, Object.assign({}, options, { unset: true }))
 	}
 
 	// Determine if the model has changed since the last `"change"` event.
@@ -446,7 +463,7 @@ export default class Model {
 	// Fetch the model from the server, merging the response with the model's
 	// local attributes. Any changed attributes will trigger a "change" event.
 	fetch(options) {
-		options = _.extend({ parse: true }, options)
+		options = Object.assign({ parse: true }, options)
 		const model = this
 		const success = options.success
 		options.success = function(resp) {
@@ -473,7 +490,7 @@ export default class Model {
 		} else {
 			;(attrs = {})[key] = val
 		}
-		options = _.extend({ validate: true, parse: true }, options)
+		options = Object.assign({ validate: true, parse: true }, options)
 		const wait = options.wait
 		// If we're not waiting and attributes exist, save acts as
 		// `set(attr).save(null, opts)` with validation. Otherwise, check if
@@ -492,14 +509,15 @@ export default class Model {
 			// Ensure attributes are restored during synchronous saves.
 			model.attributes = attributes
 			let serverAttrs = options.parse ? model.parse(resp, options) : resp
-			if (wait) serverAttrs = _.extend({}, attrs, serverAttrs)
+			if (wait) serverAttrs = Object.assign({}, attrs, serverAttrs)
 			if (serverAttrs && !model.set(serverAttrs, options)) return false
 			if (success) success.call(options.context, model, resp, options)
 			model.trigger('sync', model, resp, options)
 		}
 		wrapError(this, options)
 		// Set temporary attributes if `{wait: true}` to properly find new ids.
-		if (attrs && wait) this.attributes = _.extend({}, attributes, attrs)
+		if (attrs && wait)
+			this.attributes = Object.assign({}, attributes, attrs)
 		const method = this.isNew()
 			? 'create'
 			: options.patch ? 'patch' : 'update'
@@ -569,14 +587,17 @@ export default class Model {
 
 	// Check if the model is currently in a valid state.
 	isValid(options) {
-		return this._validate({}, _.extend({}, options, { validate: true }))
+		return this._validate(
+			{},
+			Object.assign({}, options, { validate: true })
+		)
 	}
 
 	// Run validation against the next complete set of model attributes,
 	// returning `true` if all is well. Otherwise, fire an `"invalid"` event.
 	_validate(attrs, options) {
 		if (!options.validate || !this.validate) return true
-		attrs = _.extend({}, this.attributes, attrs)
+		attrs = Object.assign({}, this.attributes, attrs)
 		const error = (this.validationError =
 			this.validate(attrs, options) || null)
 		if (!error) return true
@@ -584,7 +605,7 @@ export default class Model {
 			'invalid',
 			this,
 			error,
-			_.extend(options, { validationError: error })
+			Object.assign(options, { validationError: error })
 		)
 		return false
 	}
@@ -634,7 +655,7 @@ export default class Model {
 		if (!parent) return
 
 		parent.changed = {}
-		_.extend(options, { chained: true })
+		Object.assign(options, { chained: true })
 
 		// Loop through every changed attribute
 		for (const key in this.changed) {
@@ -669,7 +690,7 @@ export default class Model {
 			function(depAttr) {
 				this.on(`change:${depAttr}`, function(model, value, options) {
 					var value = model.get(depAttr)
-					if (value instanceof Model || value instanceof Model.Collection) {
+					if (value instanceof Model || isCollection(value)) {
 						model.changed[attr] = undefined
 						_.each(value.changed, function(subValue, subAttr) {
 							model.changed[subAttr] = subValue
@@ -692,20 +713,9 @@ export default class Model {
 	}
 }
 
-addUnderscoreMethods(
-	Model,
-	{
-		keys: 1,
-		values: 1,
-		pairs: 1,
-		invert: 1,
-		pick: 0,
-		omit: 0,
-		chain: 1,
-		isEmpty: 1
-	},
-	'attributes'
-)
+function isCollection(instance) {
+	return typeof instance === 'object' && instance[COLLECTION] === true
+}
 
 function getComputedValue(model, key) {
 	if (model.computes && model.computes[key]) {

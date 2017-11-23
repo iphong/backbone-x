@@ -10,7 +10,7 @@
 		"type": "git",
 		"url": "https://github.com/iphong/backbone-x.git"
 	},
-	"main": "./src",
+	"main": "./dist/cjs.bundle.js",
 	"scripts": {
 		"start": "webpack",
 		"rollup": "rollup -c rollup.config.js"
