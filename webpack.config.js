@@ -3,7 +3,7 @@ const webpack = require('webpack')
 
 module.exports = [
 	{
-		// devtool: 'source-map',
+		devtool: 'source-map',
 		entry: './src/index.js',
 		output: {
 			path: path.resolve(__dirname, './dist'),
@@ -20,19 +20,19 @@ module.exports = [
 				}
 			]
 		},
-		// plugins: [
-		// 	new webpack.optimize.UglifyJsPlugin({
-		// 		mangle: true,
-		// 		minimize: true,
-		// 		comments: false,
-		// 		compress: {
-		// 			screw_ie8: true,
-		// 			warnings: false,
-		// 			drop_console: true,
-		// 			dead_code: true,
-		// 			unused: true
-		// 		}
-		// 	})
-		// ]
+		plugins: [
+			new webpack.optimize.UglifyJsPlugin({
+				mangle: true,
+				minimize: true,
+				comments: false,
+				compress: {
+					screw_ie8: true,
+					warnings: false,
+					drop_console: true,
+					dead_code: true,
+					unused: true
+				}
+			})
+		]
 	}
 ]
