@@ -1,46 +1,35 @@
-import _ from 'underscore'
 import Model from './Model'
 import Events from './Events'
 import sync from '../lib/sync'
 import extend from '../lib/extend'
 import addUnderscoreMethods from '../lib/addUnderscoreMethods'
 
-const slice = Array.prototype.slice
+const _ = require('underscore')
 
-class Collection {
-	static setOptions = { add: true, remove: true, merge: true }
-	static addOptions = { add: true, remove: false }
+const slice = Array.prototype.slice
+const setOptions = { add: true, remove: true, merge: true }
+const addOptions = { add: true, remove: false }
+
+@Events
+export default class Collection {
+	static extend = extend
+	static model = Model
+
 	constructor(models, options) {
 		options || (options = {})
-		if (options.model) this.model = options.model
+		if (options.model) Object.defineProperty(this, 'model', { value: options.model })
 		if (options.comparator !== void 0) this.comparator = options.comparator
 		this._reset()
-		this.initialize.apply(this, arguments)
+		_.extend(this, _.pick(options, '_parent', '_relatedKey'))
+		this.initialize.call(this, models, options)
 		if (models) this.reset(models, _.extend({ silent: true }, options))
+		this.on('update sort reset', this._triggerParentChange)
 	}
-	sync(...args) {
-		return sync.call(this, ...args)
+	get model() {
+		return this.constructor.model
 	}
 	// The default model for a collection is just a **Backbone.Model**.
 	// This should be overridden in most cases.
-	get model() {
-		return Model
-	}
-
-	get proxy() {
-		return new Proxy(this, {
-			collection: null,
-			set(target, prop, val) {
-				if (prop === 'collection') this.collection = val
-				else target[prop] = val
-				return true
-			},
-			get(target, prop) {
-				if (prop === 'collection') return this.collection
-				else return target[prop]
-			}
-		})
-	}
 	// Initialize is an empty function by default. Override it with your own
 	// initialization logic.
 	initialize() {}
@@ -51,14 +40,29 @@ class Collection {
 			return model.toJSON(options)
 		})
 	}
+	toCompactJSON() {
+		const models = _(this.models).map(function(model) {
+			return model instanceof Model
+				? model.toCompactJSON()
+				: model.toJSON()
+		})
+		return models
+	}
+	subscribe(events, handler, context) {
+		if (typeof events !== 'string') return
+		if (typeof handler !== 'function') return
+		const keys = events.split(/\s/)
+		this.on('all', event => {
+			if (keys.includes(event)) {
+				handler.call(context)
+			}
+		})
+	}
 	// Add a model, or list of models to the set. `models` may be Backbone
 	// Models or raw JavaScript objects to be converted to Models, or any
 	// combination of the two.
 	add(models, options) {
-		return this.set(
-			models,
-			_.extend({ merge: false }, options, Collection.addOptions)
-		)
+		return this.set(models, _.extend({ merge: false }, options, addOptions))
 	}
 	// Remove a model, or a list of models from the set.
 	remove(models, options) {
@@ -72,6 +76,10 @@ class Collection {
 		}
 		return singular ? removed[0] : removed
 	}
+
+	removeAt(index) {
+		this.remove(this.at(index))
+	}
 	// Update a collection by `set`-ing a new list of models, adding new ones,
 	// removing models that are no longer present, and merging models that
 	// already exist in the collection, as necessary. Similar to **Model#set**,
@@ -79,7 +87,7 @@ class Collection {
 	set(models, options) {
 		if (models == null) return
 
-		options = _.extend({}, Collection.setOptions, options)
+		options = _.extend({}, setOptions, options)
 		if (options.parse && !this._isModel(models)) {
 			models = this.parse(models, options) || []
 		}
@@ -103,7 +111,8 @@ class Collection {
 		const remove = options.remove
 
 		let sort = false
-		const sortable = this.comparator && at == null && options.sort !== false
+		const sortable =
+			this.comparator && at == null && options.sort != false
 		const sortAttr = _.isString(this.comparator) ? this.comparator : null
 
 		// Turn bare objects into model references, and prevent invalid models
@@ -116,7 +125,7 @@ class Collection {
 			// optionally merge it into the existing model.
 			const existing = this.get(model)
 			if (existing) {
-				if (merge && model !== existing) {
+				if (merge && model != existing) {
 					let attrs = this._isModel(model) ? model.attributes : model
 					if (options.parse) attrs = existing.parse(attrs, options)
 					existing.set(attrs, options)
@@ -155,9 +164,9 @@ class Collection {
 		const replace = !sortable && add && remove
 		if (set.length && replace) {
 			orderChanged =
-				this.length !== set.length ||
+				this.length != set.length ||
 				_.some(this.models, function(m, index) {
-					return m !== set[index]
+					return m != set[index]
 				})
 			this.models.length = 0
 			splice(this.models, set, 0)
@@ -197,16 +206,41 @@ class Collection {
 	// any granular `add` or `remove` events. Fires `reset` when finished.
 	// Useful for bulk operations and optimizations.
 	reset(models, options) {
-		options = options ? _.clone(options) : {}
-		for (let i = 0; i < this.models.length; i++) {
-			this._removeReference(this.models[i], options)
+		options || (options = {})
+		for (let i = 0, l = this.models.length; i < l; i++) {
+			this._removeReference(this.models[i])
 		}
 		options.previousModels = this.models
 		this._reset()
-		models = this.add(models, _.extend({ silent: true }, options))
-		if (!options.silent) this.trigger('reset', this, options)
-		return models
+		this.add(models, _.extend({ silent: true }, options))
+		if (!options.silent) {
+			this.trigger('reset', this, options)
+			this.resetRelations(options)
+		}
+		return this
 	}
+	// reset(models, options) {
+	// 	options = options ? _.clone(options) : {}
+	// 	for (let i = 0; i < this.models.length; i++) {
+	// 		this._removeReference(this.models[i], options)
+	// 	}
+	// 	options.previousModels = this.models
+	// 	this._reset()
+	// 	models = this.add(models, _.extend({ silent: true }, options))
+	// 	if (!options.silent) this.trigger('reset', this, options)
+	// 	return models
+	// }
+
+	resetRelations(options) {
+		_.each(this.models, function(model) {
+			_.each(model.relations, function(rel, key) {
+				if (model.get(key) instanceof Collection) {
+					model.get(key).trigger('reset', model, options)
+				}
+			})
+		})
+	}
+
 	// Add a model to the end of the collection.
 	push(model, options) {
 		return this.add(model, _.extend({ at: this.length }, options))
@@ -226,8 +260,8 @@ class Collection {
 		return this.remove(model, options)
 	}
 	// Slice out a sub-array of models from the collection.
-	slice() {
-		return slice.apply(this.models, arguments)
+	slice(...args) {
+		return slice.apply(this.models, args)
 	}
 	// Get a model from the set by id, cid, model object with id or cid
 	// properties, or an attributes object that is transformed through modelId.
@@ -271,7 +305,7 @@ class Collection {
 		if (_.isFunction(comparator)) comparator = _.bind(comparator, this)
 
 		// Run sort based on type of `comparator`.
-		if (length === 1 || _.isString(comparator)) {
+		if (length == 1 || _.isString(comparator)) {
 			this.models = this.sortBy(comparator)
 		} else {
 			this.models.sort(comparator)
@@ -289,16 +323,18 @@ class Collection {
 	fetch(options) {
 		options = _.extend({ parse: true }, options)
 		const success = options.success
-		const collection = this
-		options.success = function(resp) {
+		const error = options.error
+		options.success = resp => {
 			const method = options.reset ? 'reset' : 'set'
-			collection[method](resp, options)
-			if (success)
-				success.call(options.context, collection, resp, options)
-			collection.trigger('sync', collection, resp, options)
+			this[method](resp, options)
+			if (success) success.call(options.context, this, resp, options)
+			this.trigger('sync', this, resp, options)
 		}
-		wrapError(this, options)
-		return this.sync('read', this, options)
+		options.error = resp => {
+			if (error) error.call(options.context, this, resp, options)
+			this.trigger('error', this, resp, options)
+		}
+		return sync('read', this, options)
 	}
 	// Create a new instance of a model in this collection. Add the model to the
 	// collection immediately, unless `wait: true` is passed, in which case we
@@ -345,17 +381,29 @@ class Collection {
 	// Prepare a hash of attributes (or other model) to be added to this
 	// collection.
 	_prepareModel(attrs, options) {
-		if (this._isModel(attrs)) {
-			if (!attrs.collection) attrs.collection = this
-			return attrs
-		}
+		if (attrs instanceof Model) return attrs
 		options = options ? _.clone(options) : {}
 		options.collection = this
-		const model = new this.model(attrs, options)
+
+		const modelClass = this.model
+		const model = new modelClass(attrs, options)
 		if (!model.validationError) return model
 		this.trigger('invalid', this, model.validationError, options)
 		return false
 	}
+	// _prepareModel(attrs, options) {
+	// 	if (this._isModel(attrs)) {
+	// 		if (!attrs.collection) attrs.collection = this
+	// 		return attrs
+	// 	}
+	// 	options = options ? _.clone(options) : {}
+	// 	options.collection = this
+	// 	const model = new this.model(attrs, options)
+	// 	if (!model.validationError) return model
+	// 	this.trigger('invalid', this, model.validationError, options)
+	// 	return false
+	// }
+
 	// Internal method called by both remove and set.
 	_removeModels(models, options) {
 		const removed = []
@@ -406,7 +454,8 @@ class Collection {
 	// Sets need to update their indexes when models change ids. All other
 	// events simply proxy through. "add" and "remove" events that originate
 	// in other collections are ignored.
-	_onModelEvent(event, model, collection, options) {
+	_onModelEvent(...args) {
+		const [event, model, collection, options] = args
 		if (model) {
 			if ((event === 'add' || event === 'remove') && collection !== this)
 				return
@@ -414,20 +463,76 @@ class Collection {
 			if (event === 'change') {
 				const prevId = this.modelId(model.previousAttributes())
 				const id = this.modelId(model.attributes)
-				if (prevId !== id) {
+				if (prevId != id) {
 					if (prevId != null) delete this._byId[prevId]
 					if (id != null) this._byId[id] = model
 				}
 			}
 		}
-		this.trigger.apply(this, arguments)
+		this.trigger.apply(this, args)
+	}
+
+	_triggerParentChange(model, options) {
+		const parent = this._parent
+		if (!parent) return
+
+		// If this change event is triggered by one of its child model
+		if (model && model.collection) {
+			const modelIndex = model.collection.indexOf(model)
+			const modelID = model.id
+
+			parent.changed = {}
+			_.extend(options, { chained: true })
+
+			// Loop through every changed attributes of this model
+			for (const key in model.changed) {
+				if (!_.isUndefined(modelID)) {
+					// Trigger "change:collection.id.child"
+					parent.changed[`${this._relatedKey}#${modelID}.${key}`] =
+						model.changed[key]
+					parent.trigger(
+						`change:${this._relatedKey}#${modelID}.${key}`,
+						parent,
+						model.changed[key],
+						options
+					)
+
+					// Trigger "change:collection.child"
+					parent.changed[`${this._relatedKey}#${modelID}`] =
+						model.changed[key]
+					parent.trigger(
+						`change:${this._relatedKey}#${modelID}`,
+						parent,
+						model.changed[key],
+						options
+					)
+				}
+
+				// Trigger "change:collection.child"
+				parent.changed[`${this._relatedKey}.${key}`] =
+					model.changed[key]
+				parent.trigger(
+					`change:${this._relatedKey}.${key}`,
+					parent,
+					model.changed[key],
+					options
+				)
+			}
+
+			// Trigger "change:collection"
+			parent.changed[this._relatedKey] = this
+			parent.trigger(`change:${this._relatedKey}`, parent, options)
+			parent._triggerParentChange(options)
+		}
+
+		parent.changed[this._relatedKey] = this
+
+		// Finally trigger "change"
+		parent.trigger('change', parent, options)
 	}
 }
 
-Collection.extend = extend
-Events(Collection.prototype)
-
-export default Collection
+Model.Collection = Collection
 
 addUnderscoreMethods(
 	Collection,
@@ -493,13 +598,4 @@ function splice(array, insert, at) {
 	for (i = 0; i < tail.length; i++) tail[i] = array[i + at]
 	for (i = 0; i < length; i++) array[i + at] = insert[i]
 	for (i = 0; i < tail.length; i++) array[i + length + at] = tail[i]
-}
-
-// Wrap an optional error callback with a fallback error event.
-function wrapError(model, options) {
-	const error = options.error
-	options.error = function(resp) {
-		if (error) error.call(options.context, model, resp, options)
-		model.trigger('error', model, resp, options)
-	}
 }

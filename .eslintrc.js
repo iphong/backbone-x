@@ -87,7 +87,7 @@ module.exports = {
         'default-case': 0, // <-- It is ok not to have default case
         'react/require-default-props': 0,
         'no-case-declarations': 0,
-        'guard-for-in': 1,
+        'guard-for-in': 0,
         'no-restricted-syntax': 1,
         'no-throw-literal': 1,
         'no-constant-condition': 1

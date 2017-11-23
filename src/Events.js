@@ -1,4 +1,4 @@
-import _ from 'underscore'
+const _ = require('underscore')
 
 const eventSplitter = /\s+/
 export default function(target) {

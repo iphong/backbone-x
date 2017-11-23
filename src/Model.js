@@ -9,65 +9,194 @@ import sync from '../lib/sync'
 import extend from '../lib/extend'
 import addUnderscoreMethods from '../lib/addUnderscoreMethods'
 
-import _ from 'underscore'
+const _ = require('underscore')
+const _set = require('lodash/set')
+const _mapValues = require('lodash/mapValues')
+const _cloneDeep = require('lodash/cloneDeep')
 
-class Model {
+const MODEL = Symbol.for('Model')
+const COLLECTION = Symbol.for('Collection')
+const OBSERVER = Symbol('Model')
+
+@Events
+export default class Model {
+	static extend = extend
+	static idAttribute = 'id'
+	static relations = {}
+	static computes = {}
+	static defaults = {}
+	static observer(proxy) {
+		return proxy ? proxy[OBSERVER] : void 0
+	}
+	static watch(proxy, ...args) {
+		const observer = this.observer(proxy)
+		if (observer) {
+			observer.on(...args)
+		}
+	}
+	[OBSERVER] = this
+
 	constructor(...args) {
-		let [attrs, options] = args
-		attrs = { ...attrs }
-		options = { ...options }
+		const [attrs = {}, options = {}] = args
 		this.cid = _.uniqueId(this.cidPrefix)
 		this.attributes = {}
-		if (options.collection) this.collection = options.collection
-		if (options.parse) attrs = this.parse(attrs, options) || {}
-		const defaults = _.result(this, 'defaults')
-		attrs = _.defaults({}, attrs, defaults)
-		this.set(attrs, options)
+		Object.assign(
+			this,
+			_.pick(options, 'collection', '_parent', '_relatedKey')
+		)
+		this.set(
+			Object.assign(
+				{},
+				_cloneDeep(_.result(this, 'defaults')) || {},
+				options.parse ? this.parse(attrs, options) : attrs
+			),
+			options
+		)
 		this.changed = {}
+		this.proxy = this._createProxy()
+		const localStorageKey = options.localStorageKey
+		if (!_.isUndefined(localStorage)) {
+			if (!_.isUndefined(localStorageKey)) {
+				const storedData = localStorage.getItem(localStorageKey)
+				if (storedData) {
+					try {
+						this.set(JSON.parse(storedData))
+					} catch (e) {
+						console.warn(
+							'Unable to restore from localStorage #(',
+							localStorageKey,
+							')'
+						)
+					}
+				}
+				this.on(
+					'all',
+					_.debounce(() => {
+						localStorage.setItem(
+							localStorageKey,
+							JSON.stringify(this.toJSON())
+						)
+					}, 1000)
+				)
+			}
+		}
+		options.localStorageKey = void 0
 		this.initialize(...args)
 	}
 
+	// *[Symbol.iterator]() {
+	// 	let i = 0
+	// 	const keys = Object.keys(this.attributes)
+	// 	while (i < keys.length) yield this.get(keys[i++])
+	// }
+
+	get defaults() {
+		return this.constructor.defaults
+	}
+
+	get relations() {
+		return this.constructor.relations
+	}
+
+	get computes() {
+		return this.constructor.computes
+	}
+
 	get idAttribute() {
-		return 'id'
+		return this.constructor.idAttribute
 	}
 
 	get cidPrefix() {
 		return 'c'
 	}
 
-	get proxy() {
-		return new Proxy(this, {
-			collection: null,
-			set(target, prop, val) {
-				if (prop === 'collection') this.collection = val
-				else target[prop] = val
-				return true
-			},
-			get(target, prop) {
-				if (prop === 'collection') return this.collection
-				else return target[prop]
-			}
-		})
-	}
-
 	// Initialize is an empty function by default. Override it with your own
 	// initialization logic.
 	initialize() {}
 
-	// Return a copy of the model's `attributes` object.
-	toJSON(options) {
-		return _.clone(this.attributes)
+	subscribe(events, handler, context) {
+		if (typeof events !== 'string') return
+		if (typeof handler !== 'function') return
+		const keys = events.split(/\s/)
+		this.on('change', () => {
+			const changes = Object.keys(this.changed)
+			const matched = _.intersection(keys, changes).length
+			if (matched) {
+				handler.call(context)
+			}
+		})
 	}
 
-	// Proxy `Backbone.sync` by default -- but override this if you need
-	// custom syncing semantics for *this* particular model.
-	sync(...args) {
-		return sync.call(this, ...args)
+	// Return a copy of the model's `attributes` object.
+	toJSON() {
+		let attr
+		const obj = {}
+		const attrs = _.extend({}, this.attributes)
+		for (const key in attrs) {
+			attr = this.get(key)
+			if (_.isObject(attr)) {
+				if (attr instanceof Model) {
+					attr = (attr.$ || attr).toJSON()
+				} else if (typeof attr.toJSON === 'function') {
+					attr = attr.toJSON()
+				} else {
+					const proto = Object.getPrototypeOf(attr)
+					if (
+						proto === Array.prototype ||
+						proto === Object.prototype
+					) {
+						attr = _.clone(attr)
+					} else {
+						attr = void 0
+					}
+				}
+			}
+			if (!_.isUndefined(attr)) {
+				obj[key] = attr
+			}
+		}
+		return obj
+	}
+
+	toCompactJSON() {
+		let attr
+		const obj = {}
+		for (const key in this.attributes) {
+			if (this.attributes.hasOwnProperty(key)) {
+				attr = this.attributes[key]
+				if (typeof attr.toCompactJSON === 'function') {
+					attr = attr.toCompactJSON()
+				} else if (typeof attr.toJSON === 'function') {
+					attr = attr.toJSON()
+				}
+				if (attr instanceof Compute) continue
+				if (_.isEqual(attr, this.defaults[key])) continue
+
+				obj[key] = attr
+			}
+		}
+		return obj
 	}
 
 	// Get the value of an attribute.
-	get(attr) {
-		return this.attributes[attr]
+	get(key) {
+		if (!(typeof key === 'string'))
+			return void 0
+		let value = this
+		const regex = /(\w+)(?:#(\w+))?/g
+		let match
+		while ((match = regex.exec(key))) {
+			value =
+				value instanceof Model
+					? value.attributes[match[1]]
+					: typeof value === 'object' ? value[match[1]] : undefined
+			if (match[2])
+				value =
+					value instanceof Model.Collection
+						? value.get(match[2])
+						: value[match[2]]
+		}
+		return value
 	}
 
 	// Get the HTML-escaped value of an attribute.
@@ -78,7 +207,7 @@ class Model {
 	// Returns `true` if the attribute contains a value that is not null
 	// or undefined.
 	has(attr) {
-		return this.get(attr) !== null
+		return this.get(attr) != null
 	}
 
 	// Special-cased proxy to underscore's `_.matches` method.
@@ -90,48 +219,63 @@ class Model {
 	// the core primitive operation of a model, updating the data and notifying
 	// anyone who needs to know about the change in state. The heart of the beast.
 	set(key, val, options) {
-		if (key === null) return this
+		let attrs, prev, current
+		if (key == null) return this
+
 		// Handle both `"key", value` and `{key: value}` -style arguments.
-		let attrs
 		if (typeof key === 'object') {
 			attrs = key
 			options = val
 		} else {
-			;(attrs = {})[key] = val
+			attrs = _set({}, key, val)
 		}
+
 		options || (options = {})
+
 		// Run validation.
 		if (!this._validate(attrs, options)) return false
+
 		// Extract attributes and options.
 		const unset = options.unset
 		const silent = options.silent
 		const changes = []
 		const changing = this._changing
 		this._changing = true
+
 		if (!changing) {
 			this._previousAttributes = _.clone(this.attributes)
 			this.changed = {}
 		}
-		const current = this.attributes
-		const changed = this.changed
-		const prev = this._previousAttributes
+		;(current = this.attributes), (prev = this._previousAttributes)
+
+		// Check for changes of `id`.
+		if (this.idAttribute in attrs) this.id = attrs[this.idAttribute]
+
 		// For each `set` attribute, update or delete the current value.
-		for (const attr in attrs) {
-			val = attrs[attr]
-			if (current[attr] !== val) changes.push(attr)
-			if (prev[attr] !== val) {
-				changed[attr] = val
-			} else {
-				delete changed[attr]
+		Object.keys(attrs).forEach(attr => {
+			let value = attrs[attr]
+			// if (this.computes[attr]) {
+			// 	value = this.computes[attr].set.call(this, value, options)
+			// } else {
+			//
+			// }
+			// Inject in the relational lookup
+			value = this.setRelation(attr, value, options)
+			if (!_.isUndefined(value)) {
+				if (current[attr] !== value) changes.push(attr)
+				if (prev[attr] !== value) {
+					this.changed[attr] = value
+				} else {
+					delete this.changed[attr]
+				}
+				unset ? delete current[attr] : (current[attr] = value)
 			}
-			unset ? delete current[attr] : (current[attr] = val)
-		}
-		// Update the `id`.
-		if (this.idAttribute in attrs) this.id = this.get(this.idAttribute)
+		})
+
 		// Trigger all relevant attribute changes.
 		if (!silent) {
-			if (changes.length) this._pending = options
-			for (let i = 0; i < changes.length; i++) {
+			if (changes.length) this._pending = true
+			for (let i = 0, l = changes.length; i < l; i++) {
 				this.trigger(
 					`change:${changes[i]}`,
 					this,
@@ -140,42 +284,131 @@ class Model {
 				)
 			}
 		}
-		// You might be wondering why there's a `while` loop here. Changes can
-		// be recursively nested within `"change"` events.
+
 		if (changing) return this
 		if (!silent) {
 			while (this._pending) {
-				options = this._pending
 				this._pending = false
 				this.trigger('change', this, options)
+				this._triggerParentChange(options)
 			}
 		}
 		this._pending = false
 		this._changing = false
 		return this
 	}
+	//
+	// Borrowed from "Backbone Nested Models" by "Bret Little"
+	//
+	setRelation(attr, value, options) {
+		let relation = this.attributes[attr],
+			id = this.idAttribute || 'id',
+			modelToSet,
+			modelsToAdd = [],
+			modelsToRemove = []
+
+		if (options.unset && relation) delete relation.parent
+
+		if (this.relations && _.has(this.relations, attr)) {
+			// If the relation already exists, we don't want to replace it, rather
+			// update the data within it whether it is a collection or model
+			if (relation && relation instanceof Model.Collection) {
+				// If the value that is being set is already a collection, use the models
+				// within the collection.
+				if (val instanceof Model.Collection || val instanceof Array) {
+					val = val.models || val
+					modelsToAdd = _.clone(val)
+
+					relation.each(function(model, i) {
+						// If the model does not have an "id" skip logic to detect if it already
+						// exists and simply add it to the collection
+						if (typeof model[id] === 'undefined') return
+
+						// If the incoming model also exists within the existing collection,
+						// call set on that model. If it doesn't exist in the incoming array,
+						// then add it to a list that will be removed.
+						const rModel = _.find(val, function(_model) {
+							return _model[id] === model[id]
+						})
+
+						if (rModel) {
+							model.set(rModel.toJSON ? rModel.toJSON() : rModel)
+
+							// Remove the model from the incoming list because all remaining models
+							// will be added to the relation
+							modelsToAdd.splice(i, 1)
+						} else {
+							modelsToRemove.push(model)
+						}
+					})
+
+					_.each(modelsToRemove, function(model) {
+						relation.remove(model)
+					})
+
+					relation.add(modelsToAdd)
+				} else {
+					// The incoming val that is being set is not an array or collection, then it represents
+					// a single model.  Go through each of the models in the existing relation and remove
+					// all models that aren't the same as this one (by id). If it is the same, call set on that
+					// model.
+
+					relation.each(function(model) {
+						if (val[id] === model[id]) {
+							model.set(val)
+						} else {
+							relation.remove(model)
+						}
+					})
+				}
+
+				return relation
+			}
+
+			if (val instanceof Model) {
+				val = val.toJSON()
+			}
+
+			if (relation && relation instanceof Model) {
+				relation.set(val)
+				return relation
+			}
+
+			options._parent = this
+			options._relatedKey = attr
+
+			val = new this.relations[attr](val, options)
+			val.parent = this
+		}
+
+		return val
+	}
 
 	// Remove an attribute from the model, firing `"change"`. `unset` is a noop
 	// if the attribute doesn't exist.
 	unset(attr, options) {
-		return this.set(
-			attr,
-			void 0,
-			_.extend({}, options, { unset: true })
-		)
+		return this.set(attr, void 0, _.extend({}, options, { unset: true }))
 	}
 
 	// Clear all attributes on the model, firing `"change"`.
 	clear(options) {
 		const attrs = {}
-		for (const key in this.attributes) attrs[key] = void 0
+		for (const key in this.attributes) {
+			if (this.attributes[key] instanceof Model)
+				this.attributes[key].clear(options)
+			else if (this.attributes[key] instanceof Model.Collection)
+				this.attributes[key].invoke('clear', options), this.attributes[
+					key
+				].reset([])
+			else attrs[key] = void 0
+		}
 		return this.set(attrs, _.extend({}, options, { unset: true }))
 	}
 
 	// Determine if the model has changed since the last `"change"` event.
 	// If you specify an attribute name, determine if that attribute has changed.
 	hasChanged(attr) {
-		if (attr === null) return !_.isEmpty(this.changed)
+		if (attr == null) return !_.isEmpty(this.changed)
 		return _.has(this.changed, attr)
 	}
 
@@ -187,9 +420,7 @@ class Model {
 	// determining if there *would be* a change.
 	changedAttributes(diff) {
 		if (!diff) return this.hasChanged() ? _.clone(this.changed) : false
-		const old = this._changing
-			? this._previousAttributes
-			: this.attributes
+		const old = this._changing ? this._previousAttributes : this.attributes
 		const changed = {}
 		for (const attr in diff) {
 			const val = diff[attr]
@@ -202,7 +433,7 @@ class Model {
 	// Get the previous value of an attribute, recorded at the time the last
 	// `"change"` event was fired.
 	previous(attr) {
-		if (attr === null || !this._previousAttributes) return null
+		if (attr == null || !this._previousAttributes) return null
 		return this._previousAttributes[attr]
 	}
 
@@ -227,7 +458,7 @@ class Model {
 			model.trigger('sync', model, resp, options)
 		}
 		wrapError(this, options)
-		return this.sync('read', this, options)
+		return sync('read', this, options)
 	}
 
 	// Set a hash of model attributes, and sync the model to the server.
@@ -236,7 +467,7 @@ class Model {
 	save(key, val, options) {
 		// Handle both `"key", value` and `{key: value}` -style arguments.
 		let attrs
-		if (key === null || typeof key === 'object') {
+		if (key == null || typeof key === 'object') {
 			attrs = key
 			options = val
 		} else {
@@ -260,12 +491,9 @@ class Model {
 		options.success = function(resp) {
 			// Ensure attributes are restored during synchronous saves.
 			model.attributes = attributes
-			let serverAttrs = options.parse
-				? model.parse(resp, options)
-				: resp
+			let serverAttrs = options.parse ? model.parse(resp, options) : resp
 			if (wait) serverAttrs = _.extend({}, attrs, serverAttrs)
-			if (serverAttrs && !model.set(serverAttrs, options))
-				return false
+			if (serverAttrs && !model.set(serverAttrs, options)) return false
 			if (success) success.call(options.context, model, resp, options)
 			model.trigger('sync', model, resp, options)
 		}
@@ -276,7 +504,7 @@ class Model {
 			? 'create'
 			: options.patch ? 'patch' : 'update'
 		if (method === 'patch' && !options.attrs) options.attrs = attrs
-		const xhr = this.sync(method, this, options)
+		const xhr = sync(method, this, options)
 		// Restore attributes.
 		this.attributes = attributes
 		return xhr
@@ -304,7 +532,7 @@ class Model {
 			_.defer(options.success)
 		} else {
 			wrapError(this, options)
-			xhr = this.sync('delete', this, options)
+			xhr = sync('delete', this, options)
 		}
 		if (!wait) destroy()
 		return xhr
@@ -330,8 +558,8 @@ class Model {
 	}
 
 	// Create a new model with identical attributes to this one.
-	clone() {
-		return new this.constructor(this.attributes)
+	clone(options) {
+		return new this.constructor(this.toJSON())
 	}
 
 	// A model is new if it has never been saved to the server, and lacks an id.
@@ -360,12 +588,109 @@ class Model {
 		)
 		return false
 	}
+
+	_createProxy() {
+		return new Proxy(this.attributes, {
+			has: (target, prop) => {
+				return this.has(prop)
+			},
+			get: (target, prop) => {
+				switch (prop) {
+					case '$':
+					case '$model':
+					case OBSERVER:
+						return this
+					default:
+						const result = this.get(prop)
+						if (result instanceof Model) return result.proxy
+						return result
+				}
+			},
+			set: (target, prop, value) => {
+				this.set(prop, value)
+				return true
+			},
+			getPrototypeOf: target => {
+				return Object.getPrototypeOf(this)
+			},
+			setPrototypeOf(target, proto) {
+				return true
+			},
+			deleteProperty: (target, prop) => {
+				this.unset(prop)
+				return true
+			},
+			defineProperty: (target, prop, descriptor) => {
+				return true
+			},
+			ownKeys: target => {
+				return this.keys()
+			}
+		})
+	}
+
+	_triggerParentChange(options) {
+		const parent = this.collection || this._parent
+		if (!parent) return
+
+		parent.changed = {}
+		_.extend(options, { chained: true })
+
+		// Loop through every changed attribute
+		for (const key in this.changed) {
+			// Trigger "change:this.attr"
+			parent.changed[`${this._relatedKey}.${key}`] = this.changed[key]
+			parent.trigger(
+				`change:${this._relatedKey}.${key}`,
+				parent,
+				this.changed[key],
+				options
+			)
+		}
+		//parent.changed[ this._relatedKey ] = this;
+		parent.changed[this._relatedKey] = undefined
+
+		parent.trigger(`change:${this._relatedKey}`, parent, this, options)
+		parent.trigger('change', parent, options)
+		if (this.collection) {
+			_.defer(
+				function() {
+					parent._triggerParentChange(this, options)
+				}.bind(this)
+			)
+		} else {
+			parent._triggerParentChange(options)
+		}
+	}
+
+	_registerComputeValue(compute, attr) {
+		_.each(
+			compute.deps,
+			function(depAttr) {
+				this.on(`change:${depAttr}`, function(model, value, options) {
+					var value = model.get(depAttr)
+					if (value instanceof Model || value instanceof Model.Collection) {
+						model.changed[attr] = undefined
+						_.each(value.changed, function(subValue, subAttr) {
+							model.changed[subAttr] = subValue
+							model.trigger(
+								`change:${attr}.${subAttr}`,
+								model,
+								subValue,
+								options
+							)
+						})
+					} else {
+						model.changed[attr] = value
+					}
+					model.trigger(`change:${attr}`, model, value, options)
+					model.trigger('change', model, options)
+				})
+			},
+			this
+		)
+	}
 }
-
-Model.extend = extend
-Events(Model.prototype)
-
-export default Model
 
 addUnderscoreMethods(
 	Model,
@@ -382,28 +707,43 @@ addUnderscoreMethods(
 	'attributes'
 )
 
-// Support `collection.sortBy('attr')` and `collection.findWhere({id: 1})`.
-export function cb(iteratee, instance) {
-	if (_.isFunction(iteratee)) return iteratee
-	if (_.isObject(iteratee) && !instance._isModel(iteratee))
-		return modelMatcher(iteratee)
-	if (_.isString(iteratee))
-		return function(model) {
-			return model.get(iteratee)
+function getComputedValue(model, key) {
+	if (model.computes && model.computes[key]) {
+		const compute = model.computes[key]
+		const deps = _(compute.deps).map(function(dep) {
+			return model.get(dep)
+		})
+		if (_.isFunction(compute.get)) {
+			return compute.get.apply(model, deps)
 		}
-	return iteratee
+	}
+	return model.attributes[key]
 }
 
-export function modelMatcher(attrs) {
-	const matcher = _.matches(attrs)
-	return function(model) {
-		return matcher(model.attributes)
+function setPrototypeOf(child, prototype) {
+	if (_.isFunction(Object.setPrototypeOf))
+		Object.setPrototypeOf(child.prototype || child, prototype)
+	else (child.prototype || child).__proto__ = prototype
+	return child
+}
+
+function isPrototypeOf(child, parent) {
+	if (!child || !parent) return false
+	let result = false
+	let proto = child.prototype
+	while (proto) {
+		if (proto === parent.prototype) {
+			result = true
+			break
+		}
+		proto = proto.__proto__
 	}
+	return result
 }
 
 // Throw an error when a URL is needed, and none is supplied.
 function urlError() {
-	throw new Error('A "url" property or function must be specified')
+	console.warn('A "url" property or function must be specified')
 }
 
 // Wrap an optional error callback with a fallback error event.
