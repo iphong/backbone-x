@@ -632,24 +632,23 @@ class Model {
 
 	_createProxy() {
 		if (this.proxy) return
-		this.proxy = new Proxy(this.attributes, {
+		this.proxy = new Proxy(this, {
 			has: (target, prop) => {
-				return this.has(prop)
+				return target.has(prop)
 			},
 			get: (target, prop) => {
 				switch (prop) {
 					case '$':
-					case '$model':
 					case OBSERVER:
 						return this
 					default:
-						const result = this.get(prop)
+						const result = target.get(prop)
 						if (result instanceof Model) return result.proxy
 						return result
 				}
 			},
 			set: (target, prop, value) => {
-				this.set(prop, value)
+				target.set(prop, value)
 				return true
 			},
 			getPrototypeOf: target => {
@@ -659,14 +658,14 @@ class Model {
 				return true
 			},
 			deleteProperty: (target, prop) => {
-				this.unset(prop)
+				target.unset(prop)
 				return true
 			},
 			defineProperty: (target, prop, descriptor) => {
 				return true
 			},
 			ownKeys: target => {
-				return this.keys()
+				return target.keys()
 			}
 		})
 	}

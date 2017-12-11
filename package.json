@@ -12,11 +12,10 @@
 	},
 	"main": "./dist/cjs.bundle.js",
 	"scripts": {
-		"start": "webpack",
-		"rollup": "rollup -c rollup.config.js"
+		"webpack": "webpack -w --progress",
+		"rollup": "rollup --watch -c rollup.config.js"
 	},
 	"dependencies": {
-		"backbone": "^1.3.3",
 		"lodash": "latest",
 		"underscore": "latest"
 	},
@@ -40,6 +39,7 @@
 		"enzyme": "^3.1.0",
 		"enzyme-adapter-react-16": "^1.0.2",
 		"enzyme-to-json": "^3.1.4",
+		"eslint-plugin-jest": "^21.3.2",
 		"jest": "^21.2.1",
 		"jest-webpack-resolver": "^0.1.2",
 		"mobx": "^3.3.1",
