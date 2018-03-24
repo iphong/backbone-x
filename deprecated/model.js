@@ -26,10 +26,9 @@ void (function(root, factory) {
 	}
 })(this, function(root, B, _, Backbone) {
 	const chrome = root.chrome
-	let Model, Collection, Compute, localStorage
+	let Model, Collection, Compute
 	const BackboneModel = Backbone.Model
 	const BackboneCollection = Backbone.Collection
-	localStorage = global.localStorage
 
 	/* --- Compute --- */
 	Compute = B.Compute = (function() {
@@ -69,6 +68,7 @@ void (function(root, factory) {
 			options.localStorageKey = void 0
 			_.extend(this, _.pick(options, '_parent', '_relatedKey'))
 			_.each(this.computes, this._registerComputeValue, this)
+			this.proxy = this._createProxy()
 			BackboneModel.apply(this, arguments)
 			if (
 				!_.isUndefined(localStorage) &&
@@ -548,6 +548,45 @@ void (function(root, factory) {
 				this.relations = _.extend({}, model.relations, this.relations)
 				this.computes = _.extend({}, model.computes, this.computes)
 				return this
+			},
+			_createProxy() {
+				if (this.proxy) return
+				this.proxy = new Proxy(this, {
+					has: (target, prop) => {
+						return target.has(prop)
+					},
+					get: (target, prop) => {
+						switch (prop) {
+							case '$':
+							case '$model':
+								return this
+							default:
+								const result = target.get(prop)
+								if (result instanceof Model) return result.proxy
+								return result
+						}
+					},
+					set: (target, prop, value) => {
+						target.set(prop, value)
+						return true
+					},
+					getPrototypeOf: target => {
+						return Object.getPrototypeOf(this)
+					},
+					setPrototypeOf(target, proto) {
+						return true
+					},
+					deleteProperty: (target, prop) => {
+						target.unset(prop)
+						return true
+					},
+					defineProperty: (target, prop, descriptor) => {
+						return true
+					},
+					ownKeys: target => {
+						return target.keys()
+					}
+				})
 			}
 		})
 		// statics

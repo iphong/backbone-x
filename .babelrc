@@ -1,9 +1,61 @@
 {
-	"plugins": [
-		["transform-decorators-legacy", {}]
-	],
-	"presets": [
-		["es2015", { "modules": false }],
-		["stage-0", {}]
-	]
+  "plugins": [
+    "transform-decorators-legacy",
+    "transform-es2015-modules-commonjs",
+    "syntax-dynamic-import",
+    "transform-runtime"
+  ],
+  "presets": [
+    "react",
+    "stage-0"
+  ],
+  "env": {
+    "production": {
+      "plugins": [
+        "transform-decorators-legacy",
+        "transform-es2015-modules-commonjs",
+        "react-css-modules",
+        "syntax-dynamic-import",
+        "transform-runtime"
+      ],
+      "presets": [
+        [
+          "env",
+          {
+            "targets": {
+              "browsers": [
+                ">1%",
+                "last 4 versions",
+                "Firefox ESR",
+                "not ie < 9"
+              ],
+              "forceAllTransforms": true,
+              "useBuiltIns": false,
+              "debug": false
+            },
+            "modules": false
+          }
+        ],
+        "stage-0"
+      ],
+      "comments": false
+    },
+    "development": {
+      "plugins": [
+        "transform-es2015-modules-commonjs"
+      ]
+    },
+    "test": {
+      "plugins": [
+        "dynamic-import-node",
+        "transform-decorators-legacy",
+        "transform-es2015-modules-commonjs",
+        "react-css-modules"
+      ],
+      "presets": [
+        "react",
+        "stage-0"
+      ]
+    }
+  }
 }

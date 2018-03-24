@@ -689,10 +689,18 @@ class Model {
 			this.on(
 				'all',
 				_.debounce(() => {
-					localStorage.setItem(
-						localStorageKey,
-						JSON.stringify(this.toJSON())
-					)
+					try {
+						localStorage.setItem(
+							localStorageKey,
+							JSON.stringify(this.toJSON())
+						)
+					} catch (e) {
+						console.warn(
+							'Unable to save to localStorage #(',
+							localStorageKey,
+							')'
+						)
+					}
 				}, 1000)
 			)
 		}
